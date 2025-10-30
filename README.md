@@ -27,8 +27,6 @@ Creation Commons Attribution-NonCommercial 4.0 International
 
 # Third-Party licenses
 
-## C++ dependencies
-
 - arlib 0.9.0: MPEG Avatar Representation Format Library
   - Standard development only (see Runtime/Assets/Plugins/arcore/LICENSE) 
 
@@ -59,21 +57,5 @@ Creation Commons Attribution-NonCommercial 4.0 International
 - libzip 1.11.4:
   - BSD-3 Licence, https://libzip.org/license/
   - https://libzip.org/download/libzip-1.11.4.tar.gz
-
-## Python dependencies
-
-| Name            | Version | License                              |
-|-----------------|:--------|--------------------------------------|
-| Jinja2          | 3.1.6   | BSD License                          |
-| PyYAML          | 6.0.2   | MIT License                          |
-| build           | 1.3.0   | MIT License                          |
-| colorama        | 0.4.6   | BSD License                          |
-| msgpack         | 1.1.1   | Apache 2.0                           |
-| msgpack-numpy   | 0.4.8   | BSD License                          |
-| numpy           | 1.26.4  | BSD License                          |
-| packaging       | 25.0    | Apache Software License; BSD License |
-| pillow          | 11.3.0  | MIT-CMU License                      |
-| pybind11        | 3.0.1   | BSD-style license                    |
-| pyproject_hooks | 1.2.0   | MIT License                          |
 
 
