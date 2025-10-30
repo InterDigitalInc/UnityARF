@@ -19,13 +19,18 @@ This version respects the standard defined during MPEG meeting 151.
    ```
 5. Click <kbd>Add</kbd>.
 
+# License
+
+Creation Commons Attribution-NonCommercial 4.0 International
+ - CC BY-NC 4.0
+ - https://creativecommons.org/licenses/by-nc/4.0/deed.en
+
 # Third-Party licenses
 
+## C++ dependencies
 
 - arlib 0.9.0: MPEG Avatar Representation Format Library
-  - 
-
-## C++ dependencies
+  - Standard development only (see Runtime/Assets/Plugins/arcore/LICENSE) 
 
 - args 6.4.6: A simple header-only C++ argument parser library
   - MIT Licence 
