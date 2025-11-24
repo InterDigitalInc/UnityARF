@@ -9,8 +9,8 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-      "arcore.net.dll",
-      "arcore.dll",
+      "arfcore.net.dll",
+      "arfcore.dll",
       "zlib.dll",
       "libpng16.dll",
       "jpeg62.dll",

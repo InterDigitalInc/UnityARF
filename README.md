@@ -27,20 +27,8 @@ Creation Commons Attribution-NonCommercial 4.0 International
 
 # Third-Party licenses
 
-- arlib 0.9.0: MPEG Avatar Representation Format Library
-  - Standard development only (see Runtime/Assets/Plugins/arcore/LICENSE) 
-
-- args 6.4.6: A simple header-only C++ argument parser library
-  - MIT Licence 
-  - https://github.com/Taywee/args
-
-- catch2 2.13.10: Catch2 is mainly a unit testing framework for C++, but it also provides basic micro-benchmarking features, and simple BDD macros
-  - BSD Licence 
-  - https://github.com/catchorg/Catch2
-
-- nlohmann 3.11.2: JSON for Modern C++
-  - MIT License
-  - https://github.com/nlohmann/json
+- arfcodec 0.9.0: MPEG Avatar Representation Format Library
+  - CC BY-NC 4.0, https://creativecommons.org/licenses/by-nc/4.0/deed.en
 
 - zlib 1.3.1:
   - zlib Licence, https://zlib.net/zlib_license.html
