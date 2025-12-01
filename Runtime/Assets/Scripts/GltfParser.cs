@@ -140,7 +140,11 @@ public class GltfParser
         else {  
             throw new Exception($"Invalid or unsupported pixel format {pixelFormat}");
         }
-        UnityEngine.Material unityMaterial = new UnityEngine.Material(Shader.Find("Standard"));
+        Shader shader = UnityTools.GetStandardShader();
+        if (shader == null) {
+            throw new Exception("Shader was not found");
+        }
+        UnityEngine.Material unityMaterial = new UnityEngine.Material(shader);
         if (cache != null) {
             cache.AddMaterial($"{material.GetPropertyIndex():D4}", unityMaterial);
         }

@@ -148,12 +148,12 @@ public class ArfParser
                     }
                 }
 
-                /*string outputDir = $"C:\\temp\\unity\\Imed\\{asset.name}\\{mesh.name}";
+                string outputDir = $"C:\\temp\\unity\\Imed\\{asset.name}\\{mesh.name}";
                 System.IO.Directory.CreateDirectory(outputDir);
                 UnityConvert.saveVector3Ds($"{outputDir}\\vertices.txt", renderer.sharedMesh.vertices);
                 UnityConvert.saveBoneWeights($"{outputDir}\\boneWeights.txt", renderer.sharedMesh.boneWeights);
                 UnityConvert.saveMatrix4x4s($"{outputDir}\\ibm.txt", renderer.sharedMesh.bindposes);
-                UnityConvert.saveTransforms($"{outputDir}\\transforms.txt", renderer.bones);*/
+                UnityConvert.saveTransforms($"{outputDir}\\transforms.txt", renderer.bones);
             }
         }
 
@@ -279,7 +279,6 @@ public class ArfParser
 
     public void SetMeshSkin(SkinnedMeshRenderer renderer, Interdigital.Arf.Skin skin, Dictionary<long, UnitySkeleton> skeletons)
     {
-
         if (skeletons.ContainsKey(skin.skeleton.id)) { 
             UnitySkeleton skeleton = skeletons[skin.skeleton.id];
             renderer.sharedMesh.bindposes = skeleton.bindPoses; 
