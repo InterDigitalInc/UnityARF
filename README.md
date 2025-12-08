@@ -6,7 +6,7 @@ Unity package for importing Avatar Representation Format (.arf) assets.
 
 Specification: MPEG-I Part 39, Avatar Representation Format, https://www.mpeg.org/standards/MPEG-I/39/
 
-This version respects the standard defined during MPEG meeting 151.
+This version respects the standard defined during MPEG meeting 152.
 
 # Installation
 
@@ -27,7 +27,7 @@ Creation Commons Attribution-NonCommercial 4.0 International
 
 # Third-Party licenses
 
-- arfcodec 0.9.0: MPEG Avatar Representation Format Library
+- arfcodec 0.9.1: MPEG Avatar Representation Format Library
   - CC BY-NC 4.0, https://creativecommons.org/licenses/by-nc/4.0/deed.en
 
 - zlib 1.3.1:
