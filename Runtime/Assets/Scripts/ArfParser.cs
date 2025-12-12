@@ -70,7 +70,7 @@ public class ArfParser
                 continue;
             }
 
-            Debug.Log($"Load Asset {asset.name}...");
+            //Debug.Log($"Load Asset {asset.name}...");
             GameObject assetGO = new GameObject(asset.name);
             assetGO.transform.SetParent(avatar.transform);
 
@@ -87,8 +87,14 @@ public class ArfParser
                 }
             }
 
-            foreach (Interdigital.Arf.Mesh mesh in lod.meshes) 
+            for(long lodMeshIndex = 0; lodMeshIndex < lod.meshes.Count; lodMeshIndex++)
             {
+                long meshId = lod.meshes.GetValue(lodMeshIndex);
+                if (!arf.components.meshes.Has(meshId)) {
+                    Debug.LogWarning($"Invalid mesh id {meshId}");
+                    continue;
+                }
+                Interdigital.Arf.Mesh mesh = arf.components.meshes[meshId];
                 //Debug.Log($"Load Mesh {mesh.name}...");
                 GameObject meshGO = new GameObject(mesh.name);
                 meshGO.transform.SetParent(assetGO.transform);
@@ -108,8 +114,14 @@ public class ArfParser
                 if (loadBlendshapes) 
                 {
                     Interdigital.Arf.BlendshapeSet meshBlendshapeSet = null;
-                    foreach(Interdigital.Arf.BlendshapeSet blendshapeSet in lod.blendshapeSets) 
+                    for(long lodBSIndex = 0; lodBSIndex < lod.blendshapeSets.Count; lodBSIndex++)
                     {
+                        long blendshapeSetId = lod.blendshapeSets.GetValue(lodBSIndex);
+                        if (!arf.components.blendshapeSets.Has(blendshapeSetId)) {
+                            Debug.LogWarning($"Invalid blendshape set id {blendshapeSetId}");
+                            continue;
+                        }
+                        Interdigital.Arf.BlendshapeSet blendshapeSet = arf.components.blendshapeSets[blendshapeSetId];
                         if (blendshapeSet.baseMesh == mesh) {
                             meshBlendshapeSet = blendshapeSet;
                             break;
@@ -129,8 +141,14 @@ public class ArfParser
                 if (loadSkins)
                 { 
                     Interdigital.Arf.Skin meshSkin = null;
-                    foreach(Interdigital.Arf.Skin skin in lod.skins) 
+                    for(long lodSkinIndex = 0; lodSkinIndex < lod.skins.Count; lodSkinIndex++)
                     {
+                        long skinId = lod.skins.GetValue(lodSkinIndex);
+                        if (!arf.components.skins.Has(skinId)) {
+                            Debug.LogWarning($"Invalid blendshape set id {skinId}");
+                            continue;
+                        }
+                        Interdigital.Arf.Skin skin = arf.components.skins[skinId];                    
                         if (skin.mesh == mesh) {
                             meshSkin = skin;
                             break;
@@ -148,12 +166,12 @@ public class ArfParser
                     }
                 }
 
-                string outputDir = $"C:\\temp\\unity\\Imed\\{asset.name}\\{mesh.name}";
+                /*string outputDir = $"C:\\temp\\unity\\Imed\\{asset.name}\\{mesh.name}";
                 System.IO.Directory.CreateDirectory(outputDir);
                 UnityConvert.saveVector3Ds($"{outputDir}\\vertices.txt", renderer.sharedMesh.vertices);
                 UnityConvert.saveBoneWeights($"{outputDir}\\boneWeights.txt", renderer.sharedMesh.boneWeights);
                 UnityConvert.saveMatrix4x4s($"{outputDir}\\ibm.txt", renderer.sharedMesh.bindposes);
-                UnityConvert.saveTransforms($"{outputDir}\\transforms.txt", renderer.bones);
+                UnityConvert.saveTransforms($"{outputDir}\\transforms.txt", renderer.bones);*/
             }
         }
 
@@ -253,10 +271,12 @@ public class ArfParser
     {
         UnityEngine.Mesh unityMesh = renderer.sharedMesh;
         Vector3[] baseVertices = unityMesh.vertices;
-
+        //Debug.Log($"Add blendshapes to mesh...");
         int blendshapeIndex = 0;
-        foreach(Interdigital.Arf.Data shape in blendshapeSet.shapes) 
+        foreach(var blendshape in blendshapeSet.shapes) 
         {
+            var shape = blendshape.shape;
+            //Debug.Log($"Add blendshape {shape.name}...");
             Gltf gltf = shape.GetGltf();
             GltfParser gltfParser = new GltfParser(gltf);
             Interdigital.Gltf2.Mesh mesh = gltfParser.GetFirstMesh();

@@ -13,7 +13,7 @@ namespace Arf {
 public class ArfAvatar : MonoBehaviour
 {
     public string id;
-    public long age;
+    public double age;
     public string gender;
 
     public Dictionary<string, ArfControllers> faceAnimations = new Dictionary<string, ArfControllers>();

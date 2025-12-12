@@ -26,7 +26,7 @@ public class ArfAvatarEditor : UnityEditor.Editor
         EditorGUI.BeginDisabledGroup(true);
         EditorGUILayout.LabelField("Name", avatar.name);
         EditorGUILayout.LabelField("Id", avatar.id);
-        EditorGUILayout.LongField("Age", avatar.age);
+        EditorGUILayout.DoubleField("Age", avatar.age);
         EditorGUILayout.LabelField("Gender", avatar.gender);
         EditorGUI.EndDisabledGroup();
 
