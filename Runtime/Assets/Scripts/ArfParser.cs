@@ -52,8 +52,8 @@ public class ArfParser
                                    bool loadBlendshapes = true, 
                                    bool loadSkeletons = true, 
                                    bool loadSkins = true, 
-                                   bool transposeNodeTransforms = false, 
-                                   bool transposeInverseBindMatrices = false)
+                                   bool transposeNodeTransforms = true, 
+                                   bool transposeInverseBindMatrices = true)
     {
         GameObject avatar = new GameObject(arf.metadata.name);
         if (transform != null) {
@@ -91,7 +91,7 @@ public class ArfParser
             {
                 long meshId = lod.meshes.GetValue(lodMeshIndex);
                 if (!arf.components.meshes.Has(meshId)) {
-                    Debug.LogWarning($"Invalid mesh id {meshId}");
+                    //Debug.LogWarning($"Invalid mesh id {meshId}");
                     continue;
                 }
                 Interdigital.Arf.Mesh mesh = arf.components.meshes[meshId];
@@ -118,7 +118,7 @@ public class ArfParser
                     {
                         long blendshapeSetId = lod.blendshapeSets.GetValue(lodBSIndex);
                         if (!arf.components.blendshapeSets.Has(blendshapeSetId)) {
-                            Debug.LogWarning($"Invalid blendshape set id {blendshapeSetId}");
+                            //Debug.LogWarning($"Invalid blendshape set id {blendshapeSetId}");
                             continue;
                         }
                         Interdigital.Arf.BlendshapeSet blendshapeSet = arf.components.blendshapeSets[blendshapeSetId];
@@ -145,7 +145,7 @@ public class ArfParser
                     {
                         long skinId = lod.skins.GetValue(lodSkinIndex);
                         if (!arf.components.skins.Has(skinId)) {
-                            Debug.LogWarning($"Invalid blendshape set id {skinId}");
+                            //Debug.LogWarning($"Invalid skin id {skinId}");
                             continue;
                         }
                         Interdigital.Arf.Skin skin = arf.components.skins[skinId];                    

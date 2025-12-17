@@ -15,8 +15,11 @@ public class ArfAvatar : MonoBehaviour
     public string id;
     public double age;
     public string gender;
+    private bool transposeTransforms = true;
 
-    public Dictionary<string, ArfControllers> faceAnimations = new Dictionary<string, ArfControllers>();
+    public Dictionary<string, AnimationFramework> faceAnimations = new Dictionary<string, AnimationFramework>();
+    public Dictionary<string, AnimationFramework> bodyAnimations = new Dictionary<string, AnimationFramework>();
+    public Dictionary<string, AnimationMapper> animationMappers = new Dictionary<string, AnimationMapper>();
 
     public AnimationComponents animationComponents;
 
@@ -36,12 +39,27 @@ public class ArfAvatar : MonoBehaviour
             { 
                 try 
                 {
-                    AnimationFramework framework = new AnimationFramework(urn);
-                    framework.AutoFill();
-                    faceAnimations[urn] = new ArfControllers(arf, framework);
+                    AnimationFramework framework = AnimationFramework.Create(urn);    
+                    faceAnimations[urn] = framework;
+                    animationMappers[urn] = new AnimationMapper(arf, framework);
                 }
-                catch {
-                    Debug.Log($"Animation framework {urn} is ignored because it is not supported or its inputs are not weights");
+                catch(Exception ex) {
+                    Debug.LogWarning($"Animation framework {urn} is ignored because it is not supported (error: {ex})");
+                }
+            }
+        }
+        if (supportedAnimations.HasBodyAnimations()) 
+        {
+            foreach (string urn in supportedAnimations.bodyAnimations)
+            { 
+                try 
+                {
+                    AnimationFramework framework = AnimationFramework.Create(urn);    
+                    bodyAnimations[urn] = framework;
+                    animationMappers[urn] = new AnimationMapper(arf, framework);
+                }
+                catch(Exception ex) {
+                    Debug.LogWarning($"Animation framework {urn} is ignored because it is not supported (error: {ex})");
                 }
             }
         }
@@ -49,9 +67,45 @@ public class ArfAvatar : MonoBehaviour
         animationComponents = new AnimationComponents(arf);
     }
 
-    public void Update()
+    public void UpdateGameObjects()
     {
+        UpdateGameObjects(gameObject);
+    }
+
+    public void UpdateGameObjects(GameObject gameObject) 
+    {
+        if (gameObject.TryGetComponent(out ArfComponent component))
+        {
+            if (gameObject.TryGetComponent(out SkinnedMeshRenderer renderer))
+            {
+                if (component.blendshapeSet.HasValue) 
+                { 
+                    long blendshapeSet = component.blendshapeSet.Value;                
+                    float[] weights = animationComponents.GetBlendshapeWeights(blendshapeSet);
+                    for (int i = 0; i < weights.Length; i++) {
+                        renderer.SetBlendShapeWeight(i, weights[i]);
+                    }
+                }
+                if (component.skeleton.HasValue) 
+                { 
+                    long skeleton = component.skeleton.Value;        
+                    long jointCount = animationComponents.GetJointCount(skeleton);
+                    float[] transforms = animationComponents.GetJointTransforms(skeleton);
+                    for (int i = 0; i < jointCount; i++) {
+                        Matrix4x4 mat = UnityConvert.ToMatrix4x4(transforms, i * 16);
+                        if (transposeTransforms) {
+                            mat = mat.transpose;
+                        }
+                        UnityConvert.SetTransform(renderer.bones[i], mat);
+                    }
+                }
+            }
+        }
         
+        foreach (Transform child in gameObject.transform)
+        {
+            UpdateGameObjects(child.gameObject);
+        }
     }
 };
 

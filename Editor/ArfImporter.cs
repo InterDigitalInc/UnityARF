@@ -20,8 +20,8 @@ public class ArfImporter : ScriptedImporter
     [SerializeField] public bool loadBlendshapes = true;
     [SerializeField] public bool loadSkeletons = true;
     [SerializeField] public bool loadSkins = true;
-    [SerializeField] public bool transposeInverseBindMatrices = false;
-    [SerializeField] public bool transposeNodeTransforms = false;
+    [SerializeField] public bool transposeInverseBindMatrices = true;
+    [SerializeField] public bool transposeNodeTransforms = true;
 
     public override void OnImportAsset(AssetImportContext ctx)
     {        

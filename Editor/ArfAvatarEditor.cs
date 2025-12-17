@@ -5,6 +5,7 @@
 //
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
@@ -15,6 +16,7 @@ namespace Arf {
 public class ArfAvatarEditor : UnityEditor.Editor
 {
     public int selectedFaceAnimation = 0;
+    public Dictionary<string, ArfControllers> faceControllers = new Dictionary<string, ArfControllers>();
 
     public override void OnInspectorGUI()
     {
@@ -31,27 +33,35 @@ public class ArfAvatarEditor : UnityEditor.Editor
         EditorGUI.EndDisabledGroup();
 
         if (avatar.faceAnimations.Count > 0)
-        { 
+        {
             EditorGUILayout.Space();
             string[] urns = avatar.faceAnimations.Keys.ToArray();
             selectedFaceAnimation = EditorGUILayout.Popup("Face animation", selectedFaceAnimation, urns);
-            ArfControllers controllers = avatar.faceAnimations[urns[selectedFaceAnimation]];
+            string urn = urns[selectedFaceAnimation];
+            AnimationFramework framework = avatar.faceAnimations[urn];
+            ArfControllers controllers;
+            if (!faceControllers.ContainsKey(urn)) {
+                controllers = new ArfControllers(framework, avatar.animationMappers[urn]);
+                faceControllers[urn] = controllers;
+            }
+            else {
+                controllers = faceControllers[urn];
+            }
             EditorGUI.BeginChangeCheck();
             for(int controllerIndex = 0; controllerIndex < controllers.count; controllerIndex++)
             {
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField(controllers.names[controllerIndex], GUILayout.Width(50));
+                EditorGUILayout.LabelField(controllers.names[controllerIndex]);
                 controllers.weights[controllerIndex] = EditorGUILayout.Slider(
                     controllers.weights[controllerIndex], 
                     controllers.mins[controllerIndex], 
                     controllers.maxs[controllerIndex]
                 );
-                EditorGUILayout.EndHorizontal();
             }
             if (EditorGUI.EndChangeCheck())
             {
-                try { 
-                    controllers.UpdateComponents(avatar.gameObject, avatar.animationComponents);
+                try {
+                    controllers.UpdateComponents(avatar.animationComponents);
+                    avatar.UpdateGameObjects();
                 }
                 catch(Exception e) {
                     Debug.LogError($"Error during components update: {e}");

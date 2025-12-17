@@ -17,20 +17,16 @@ public class TestArf : MonoBehaviour
     public bool loadBlendshapes = true;
     public bool loadSkeletons = true;
     public bool loadSkins = true;
-    public bool transposeInverseBindMatrices = false;
-    public bool transposeNodeTransforms = false;
 
     void Start()
     {       
-        ArfParser arf = ArfParser.Load(filePath);
+        ArfParser arf = ArfParser.Load(filePath); 
         
         GameObject avatar = arf.createAvatar(
             transform, lod,
             loadBlendshapes: loadBlendshapes,
             loadSkeletons: loadSkeletons,
-            loadSkins: loadSkins, 
-            transposeNodeTransforms: transposeNodeTransforms,
-            transposeInverseBindMatrices: transposeInverseBindMatrices
+            loadSkins: loadSkins
         );
     }
 }
