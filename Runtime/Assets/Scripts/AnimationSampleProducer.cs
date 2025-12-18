@@ -29,11 +29,9 @@ public class AnimationSampleProducer : IDisposable
             try
             {
                 using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 64 * 1024, useAsync: true);
-                Debug.Log(path);
                 AnimationSampleStream stream = new AnimationSampleStream();
                 while (!cts.IsCancellationRequested && fs.Position < fs.Length)
                 {
-                    Debug.Log(queue.Count);
                     while (queue.Count >= maxQueueSize && !cts.IsCancellationRequested)
                         await Task.Delay(5, cts.Token);
 
@@ -52,8 +50,6 @@ public class AnimationSampleProducer : IDisposable
                         if (!sample.IsValid()) {
                             continue;
                         }
-                        Debug.Log(sample.GetTimestamp());
-                        Debug.Log(sample.GetUnitType());
                     }
                     catch (Exception ex)
                     {

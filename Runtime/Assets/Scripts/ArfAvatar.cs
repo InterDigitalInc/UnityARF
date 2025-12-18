@@ -6,6 +6,7 @@
 using System;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Interdigital {
 namespace Arf {
@@ -91,6 +92,11 @@ public class ArfAvatar : MonoBehaviour
                     long skeleton = component.skeleton.Value;        
                     long jointCount = animationComponents.GetJointCount(skeleton);
                     float[] transforms = animationComponents.GetJointTransforms(skeleton);
+
+                    Debug.Log($"skeleton = {skeleton}, {jointCount}");
+                    Debug.Log(string.Join(", ", transforms.Skip(16).Take(16)));
+                    Debug.Log(string.Join(", ", transforms.Skip(16*39).Take(16)));
+
                     for (int i = 0; i < jointCount; i++) {
                         Matrix4x4 mat = UnityConvert.ToMatrix4x4(transforms, i * 16);
                         if (transposeTransforms) {
