@@ -15,7 +15,7 @@ namespace Arf {
 public class AnimateArf : MonoBehaviour
 {
     public string filePath;
-    public int lod = 0;
+    public string lodName = "high_quality";
     public bool loadBlendshapes = true;
     public bool loadSkeletons = true;
     public bool loadSkins = true;
@@ -62,7 +62,7 @@ public class AnimateArf : MonoBehaviour
         ArfParser arf = ArfParser.Load(filePath); 
         
         GameObject avatarObject = arf.createAvatar(
-            transform, lod,
+            transform, lodName,
             loadBlendshapes: loadBlendshapes,
             loadSkeletons: loadSkeletons,
             loadSkins: loadSkins
@@ -85,7 +85,7 @@ public class AnimateArf : MonoBehaviour
         {           
             if (sample.GetUnitType() == AnimationUnitType.AAU_CONFIG) 
             {
-                var config = sample.GetConfigSample();
+                var config = sample.ToConfigSample();
                 timeScale = config.GetTimescale();
                 queue.TryDequeue(out _);
                 continue;
@@ -103,7 +103,7 @@ public class AnimateArf : MonoBehaviour
             queue.TryDequeue(out _);
             if (sample.GetUnitType() == AnimationUnitType.AAU_JOINT)
             { 
-                var joint = sample.GetJointSample();
+                var joint = sample.ToJointSample(); 
                 joint.SelectJoints(animatedJointIds);
                 mapper.UpdateComponents(components, joint);
                 avatar.UpdateGameObjects();

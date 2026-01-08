@@ -13,7 +13,7 @@ namespace Arf {
 public class TestArf : MonoBehaviour
 {
     public string filePath;
-    public int lod = 0;
+    public string lodName = "high_quality";
     public bool loadBlendshapes = true;
     public bool loadSkeletons = true;
     public bool loadSkins = true;
@@ -23,7 +23,7 @@ public class TestArf : MonoBehaviour
         ArfParser arf = ArfParser.Load(filePath); 
         
         GameObject avatar = arf.createAvatar(
-            transform, lod,
+            transform, lodName,
             loadBlendshapes: loadBlendshapes,
             loadSkeletons: loadSkeletons,
             loadSkins: loadSkins

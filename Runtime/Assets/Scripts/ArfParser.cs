@@ -3,13 +3,14 @@
 // All rights reserved.
 // See LICENSE under the root folder.
 //
+using Interdigital;
+using Interdigital.Arf;
+using Interdigital.Gltf2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Interdigital;
-using Interdigital.Arf;
-using Interdigital.Gltf2;
+using UnityEngine.UIElements;
 
 namespace Interdigital {
 namespace Arf {
@@ -48,7 +49,7 @@ public class ArfParser
     ~ArfParser() { Dispose(); }
 
     public GameObject createAvatar(Transform transform, 
-                                   int lodId, 
+                                   string lodName, 
                                    bool loadBlendshapes = true, 
                                    bool loadSkeletons = true, 
                                    bool loadSkins = true, 
@@ -66,7 +67,8 @@ public class ArfParser
         Dictionary<long, UnitySkeleton> skeletons = new Dictionary<long, UnitySkeleton>();
         foreach (Interdigital.Arf.Asset asset in arf.structure.assets)
         {
-            if (lodId >= asset.lods.Count) {
+            if (!asset.lods.HasByName(lodName)) {
+                Debug.LogWarning($"No LoD {lodName} in asset {asset.name}");
                 continue;
             }
 
@@ -74,7 +76,7 @@ public class ArfParser
             GameObject assetGO = new GameObject(asset.name);
             assetGO.transform.SetParent(avatar.transform);
 
-            Lod lod = asset.lods[lodId];
+            Lod lod = asset.lods.GetByName(lodName);
 
             if (loadSkeletons) { 
                 foreach (Interdigital.Arf.Skeleton skeleton in lod.skeletons) {
@@ -108,7 +110,7 @@ public class ArfParser
                     SetMesh(renderer, mesh);                
                 }
                 catch(Exception e) {
-                    throw new Exception($"Error setting mesh {mesh.id}, lod {lodId}, asset {asset.id}: {e.Message}");
+                    throw new Exception($"Error setting mesh {mesh.id}, lod {lodName}, asset {asset.id}: {e.Message}");
                 }
 
                 if (loadBlendshapes) 
@@ -133,7 +135,7 @@ public class ArfParser
                             component.blendshapeSet = meshBlendshapeSet.id;
                         }
                         catch(Exception e) {
-                            throw new Exception($"Error setting blendshape set of mesh {mesh.id}, lod {lodId}, asset {asset.id}: {e.Message}");
+                            throw new Exception($"Error setting blendshape set of mesh {mesh.id}, lod {lodName}, asset {asset.id}: {e.Message}");
                         }
                     }
                 }
@@ -161,7 +163,7 @@ public class ArfParser
                         }
                         catch(Exception e) {
                             Debug.LogError(e.StackTrace);
-                            throw new Exception($"Error setting skin of mesh {mesh.id}, lod {lodId}, asset {asset.id}: {e.Message}");
+                            throw new Exception($"Error setting skin of mesh {mesh.id}, lod {lodName}, asset {asset.id}: {e.Message}");
                         }
                     }
                 }

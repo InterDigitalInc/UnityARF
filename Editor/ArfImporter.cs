@@ -16,7 +16,7 @@ namespace Arf {
 [ScriptedImporter(1, new[] { "zip", "arf" })]
 public class ArfImporter : ScriptedImporter
 {
-    [SerializeField] public int lod = 0;
+    [SerializeField] public string lodName = "high_quality";
     [SerializeField] public bool loadBlendshapes = true;
     [SerializeField] public bool loadSkeletons = true;
     [SerializeField] public bool loadSkins = true;
@@ -28,7 +28,7 @@ public class ArfImporter : ScriptedImporter
         AssetCache cache = new AssetCache();
         ArfParser parser = ArfParser.Load(ctx.assetPath, cache);
         GameObject asset = parser.createAvatar(
-            null, lod,
+            null, lodName,
             loadBlendshapes: loadBlendshapes,
             loadSkeletons: loadSkeletons,
             loadSkins: loadSkins, 
