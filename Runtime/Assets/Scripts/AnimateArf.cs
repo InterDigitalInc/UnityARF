@@ -98,7 +98,7 @@ public class AnimateArf : MonoBehaviour
             float timestamp = sample.GetTimestamp() / timeScale;
             //Debug.Log($"timestamp = {timestamp}");
             if (timestamp > timeAccumulator) {
-                break;
+                break; // change to continue when problems are solved
             }
             queue.TryDequeue(out _);
             if (sample.GetUnitType() == AnimationUnitType.AAU_JOINT)

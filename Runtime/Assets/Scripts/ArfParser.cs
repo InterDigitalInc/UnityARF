@@ -200,7 +200,7 @@ public class ArfParser
                 if (transposeNodeTransforms) {
                     mat = mat.transpose;
                 }
-                UnityConvert.SetTransform(bone, mat);
+                UnityConvert.SetLocalTransform(bone, mat);
             }
             else
             { 

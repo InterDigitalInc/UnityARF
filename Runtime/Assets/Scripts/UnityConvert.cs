@@ -100,13 +100,13 @@ public class UnityConvert
         );
     }
 
-    public static void SetTransform(Transform transform, float[] data, int offset = 0)
+    public static void SetLocalTransform(Transform transform, float[] data, int offset = 0)
     {
         Matrix4x4 mat = UnityConvert.ToMatrix4x4(data, offset);
-        UnityConvert.SetTransform(transform, mat);
+        UnityConvert.SetLocalTransform(transform, mat);
     }
 
-    public static void SetTransform(Transform transform, Matrix4x4 mat)
+    public static void SetLocalTransform(Transform transform, Matrix4x4 mat)
     {
         Vector3 position = mat.GetColumn(3);
         Vector3 scale = new Vector3(
@@ -120,6 +120,29 @@ public class UnityConvert
         );
         transform.localPosition = position;
         transform.localRotation = rotation;
+        transform.localScale = scale;
+    }
+
+    public static void SetGlobalTransform(Transform transform, float[] data, int offset = 0)
+    {
+        Matrix4x4 mat = UnityConvert.ToMatrix4x4(data, offset);
+        UnityConvert.SetGlobalTransform(transform, mat);
+    }
+
+    public static void SetGlobalTransform(Transform transform, Matrix4x4 mat)
+    {
+        Vector3 position = mat.GetColumn(3);
+        Vector3 scale = new Vector3(
+            mat.GetColumn(0).magnitude,
+            mat.GetColumn(1).magnitude,
+            mat.GetColumn(2).magnitude
+        );
+        Quaternion rotation = Quaternion.LookRotation(
+            mat.GetColumn(2).normalized,
+            mat.GetColumn(1).normalized
+        );
+        transform.position = position;
+        transform.rotation = rotation;
         transform.localScale = scale;
     }
 

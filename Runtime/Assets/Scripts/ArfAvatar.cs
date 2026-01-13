@@ -93,8 +93,8 @@ public class ArfAvatar : MonoBehaviour
                     long jointCount = animationComponents.GetJointCount(skeleton);
                     float[] transforms = animationComponents.GetJointTransforms(skeleton);
 
-                    Debug.Log($"skeleton = {skeleton}, {jointCount}");
-                    Debug.Log(string.Join(", ", transforms));
+                    //Debug.Log($"skeleton = {skeleton}, {jointCount}");
+                    //Debug.Log(string.Join(", ", transforms));
                     //Debug.Log(string.Join(", ", transforms.Skip(16).Take(16)));
                     //Debug.Log(string.Join(", ", transforms.Skip(16*39).Take(16)));
 
@@ -103,7 +103,7 @@ public class ArfAvatar : MonoBehaviour
                         if (transposeTransforms) {
                             mat = mat.transpose;
                         }
-                        UnityConvert.SetTransform(renderer.bones[i], mat);
+                        UnityConvert.SetLocalTransform(renderer.bones[i], mat);
                     }
                 }
             }
