@@ -1,66 +1,99 @@
-using Interdigital.Arf;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Networking;
-using UnityEngine.Playables;
+using Debug = UnityEngine.Debug;
 
-public class RestResultProducer : IDisposable
+public class RestResultProducer : MonoBehaviour
 {
-    private readonly string uri;
-    private readonly ConcurrentQueue<FacesResult> queue;
-    private readonly int maxQueueSize;
-    private readonly CancellationTokenSource cts = new();
-    private Task worker;
+    private float pollIntervalSeconds = 0.01f;
+    private string uri;
+    private ConcurrentQueue<FacesResult> queue;
+    private int maxQueueSize;
 
-    public RestResultProducer(string uri, ConcurrentQueue<FacesResult> queue, int maxQueueSize = 10)
+    private Coroutine routine;
+    private bool running;
+
+    public void Init(string uri, ConcurrentQueue<FacesResult> queue, int maxQueueSize = 10, float pollIntervalSeconds = 0.1f)
     {
         this.uri = uri;
         this.queue = queue;
         this.maxQueueSize = maxQueueSize;
+        this.pollIntervalSeconds = pollIntervalSeconds;
     }
 
-    public void Start()
+    public void StartProducing()
     {
-        worker = Task.Run(async () =>
+        if (running) return;
+        running = true;
+        routine = StartCoroutine(PollLoop());
+    }
+
+    public void StopProducing()
+    {
+        running = false;
+        if (routine != null) StopCoroutine(routine);
+        routine = null;
+    }
+
+    private IEnumerator PollLoop()
+    {
+        var wait = new WaitForSeconds(pollIntervalSeconds);
+
+        while (running)
+        {
+            yield return GetOnce();
+            yield return wait;
+        }
+    }
+
+    private IEnumerator GetOnce()
+    {
+    var stopwatch = Stopwatch.StartNew();
+
+        using var request = UnityWebRequest.Get(uri);
+        request.SetRequestHeader("Accept", "application/json");
+        request.timeout = 10;
+
+        yield return request.SendWebRequest();
+
+    Debug.Log($"Request time = {stopwatch.Elapsed.TotalMilliseconds} ms");
+
+
+        var result = new FacesResult();
+        if (request.result == UnityWebRequest.Result.Success)
         {
             try
             {
-                while(!cts.IsCancellationRequested)
-                {
-                    using (UnityWebRequest request = UnityWebRequest.Get(uri))
-                    {
-                        request.SetRequestHeader("Accept", "application/json");
-
-                        await request.SendWebRequest();
-                        if (request.result == UnityWebRequest.Result.Success)
-                        {
-                            Debug.Log("Response: " + request.downloadHandler.text);
-                        }
-                        else
-                        {
-                            Debug.LogError($"GET failed: {request.responseCode} - {request.error}\n{request.downloadHandler.text}");
-                        }
-                    }
+                result = JsonUtility.FromJson<FacesResult>(request.downloadHandler.text);
+                if (result.error == "ok") { 
+                    result.error = null;
                 }
             }
-            catch (OperationCanceledException) { /* normal shutdown */ }
             catch (Exception ex)
             {
-                Debug.LogError($"RestResultProducer error: {ex}");
+                result.content = null;
+                result.error = "JSON parse error: " + ex.Message;
             }
-        }, cts.Token);
+        }
+        else
+        {
+            result.content = null;
+            result.error = $"HTTP {request.responseCode}: {request.error} | body={request.downloadHandler?.text}";
+        }
+
+        while (queue.Count >= maxQueueSize && queue.TryDequeue(out _)) { }
+        queue.Enqueue(result);
+
+
+    stopwatch.Stop();
+
     }
 
-    public void Stop()
+    private void OnDisable()
     {
-        cts.Cancel();
-        try { worker?.Wait(500); } catch { }
+        StopProducing();
     }
-
-    public void Dispose() => Stop();
-
 }

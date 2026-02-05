@@ -12,7 +12,7 @@ public class Blendshapes
 public class Face
 {
     public List<List<float>> landmarks;
-    public List<Blendshapes> blendshapes;
+    public Blendshapes blendshapes;
 }
 
 
