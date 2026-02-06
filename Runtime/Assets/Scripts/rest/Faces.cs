@@ -20,7 +20,7 @@ public class Face
 public class Faces
 {
     public List<Face> faces;
-    public List<String> blendshapeNames;
+    public List<String> blendshapesName;
 }
 
 [Serializable]

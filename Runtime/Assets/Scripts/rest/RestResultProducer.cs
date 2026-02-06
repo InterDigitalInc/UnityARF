@@ -51,16 +51,11 @@ public class RestResultProducer : MonoBehaviour
 
     private IEnumerator GetOnce()
     {
-    var stopwatch = Stopwatch.StartNew();
-
         using var request = UnityWebRequest.Get(uri);
         request.SetRequestHeader("Accept", "application/json");
         request.timeout = 10;
 
         yield return request.SendWebRequest();
-
-    Debug.Log($"Request time = {stopwatch.Elapsed.TotalMilliseconds} ms");
-
 
         var result = new FacesResult();
         if (request.result == UnityWebRequest.Result.Success)
@@ -86,10 +81,6 @@ public class RestResultProducer : MonoBehaviour
 
         while (queue.Count >= maxQueueSize && queue.TryDequeue(out _)) { }
         queue.Enqueue(result);
-
-
-    stopwatch.Stop();
-
     }
 
     private void OnDisable()

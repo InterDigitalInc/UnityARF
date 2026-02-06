@@ -1,6 +1,7 @@
 using Interdigital.Arf;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class RestClient : MonoBehaviour
@@ -22,7 +23,9 @@ public class RestClient : MonoBehaviour
     private ArfAvatar avatar;
     private AnimationMapper mapper;
     private AnimationComponents components;
+    private AnimationFramework animationFramework;
     private AnimationData animationData;
+    private string[] blendshapesName;
 
     private void Start()
     {
@@ -36,7 +39,10 @@ public class RestClient : MonoBehaviour
         avatar = avatarObject.GetComponent<ArfAvatar>();
         components = avatar.animationComponents;
         mapper = avatar.animationMappers[animationFrameworkURN];
-        animationData = avatar.faceAnimations[animationFrameworkURN].CreateData();
+        animationFramework = avatar.faceAnimations[animationFrameworkURN];
+        blendshapesName = animationFramework.GetInputNames();
+        animationData = animationFramework.CreateData();
+        
     }
 
     void OnEnable()
@@ -74,25 +80,44 @@ public class RestClient : MonoBehaviour
             else if (lastResult.content != null)
             {
                 if (lastResult.content.faces?.Count > 0) {
-                    UpdateAvatarBlendshapes(lastResult.content.faces[0]);
+                    UpdateAvatarBlendshapes(lastResult.content, 0);
                 }
             }
         }
     }
 
-    void UpdateAvatarBlendshapes(Face face)
+    void UpdateAvatarBlendshapes(Faces content, int index)
     {
+        if (content == null) return;
+        var faces = content.faces;
+        var contentBlendshapesName = content.blendshapesName;
+        if (index < 0 ||  index >= faces.Count) return;
+        var face = faces[index];
         if (face.blendshapes == null) return;
-        var weights = face.blendshapes.weights;
-        if (weights == null) return;
+        var contentWeights = face.blendshapes.weights;
+        if (contentWeights == null) return;
+        if (contentWeights.Count == 0) return;
+        if (contentBlendshapesName.Count != contentWeights.Count) {
+            Debug.LogWarning($"Invalid weight count {contentBlendshapesName.Count} != {contentWeights.Count}");
+            return;
+        }
         var totalBlendshapeCount = animationData.weights.Length;
-        if (weights.Count > totalBlendshapeCount) {
-            Debug.LogWarning($"Invalid blendshape count {weights.Count} > {animationData.weights.Length}");
+        if (blendshapesName.Length != totalBlendshapeCount) {
+            Debug.LogWarning($"Invalid blendshape count {blendshapesName.Length} != {totalBlendshapeCount}");
+            return;
         }
-        while(weights.Count < totalBlendshapeCount) {
-            weights.Add(0f);
+        float[] weights = new float[totalBlendshapeCount];
+        for (int i = 0; i < totalBlendshapeCount; i++) 
+        {
+            var j = contentBlendshapesName.IndexOf(blendshapesName[i]);
+            if (j >= 0) {
+                weights[i] = contentWeights[j];
+            }
+            else {
+                weights[i] = 0;
+            }
         }
-        animationData.weights = weights.ToArray();
+        animationData.weights = weights;
         mapper.UpdateComponents(components, animationData);
         avatar.UpdateGameObjects();
     }
