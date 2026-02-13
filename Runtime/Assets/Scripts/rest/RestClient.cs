@@ -1,7 +1,6 @@
 using Interdigital.Arf;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class RestClient : MonoBehaviour
@@ -75,7 +74,7 @@ public class RestClient : MonoBehaviour
         {
             if (!string.IsNullOrEmpty(lastResult.error))
             {
-                Debug.LogWarning(lastResult.error);
+                //Debug.LogWarning(lastResult.error);
             }
             else if (lastResult.content != null)
             {
