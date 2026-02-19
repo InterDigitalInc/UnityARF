@@ -22,6 +22,35 @@ public class AnimationSampleProducer : IDisposable
         this.maxQueueSize = maxQueueSize;
     }
 
+    public static UnitAnimationSample GetNextSample(Interdigital.Arf.AnimationSampleStream stream, FileStream fs)
+	{
+		while(true)
+		{
+			UnitAnimationSample sample = stream.NextUnitSample();
+			if (sample.IsValid()) {
+				return sample;
+			}
+			if (stream.GetState() == Interdigital.Arf.AnimationSampleStreamState.NOT_ENOUGH_DATA) 
+			{
+			    if (fs.Position >= fs.Length) {
+					throw new EndOfStreamException();
+				}
+				int count = 1024;
+				if (count > (fs.Length - fs.Position)) {
+					count = (int)(fs.Length - fs.Position);
+				}
+				byte[] bytes = new byte[count];
+				int n = fs.Read(bytes, 0, count);
+				if (n != count) {
+					throw new SystemException("I/O error");
+				}
+				stream.Feed(bytes); 
+				continue;
+			}
+			throw new SystemException($"Failed getting next sample: {stream.GetErrorMsg()}");
+		}
+	}
+
     public void Start()
     {
         worker = Task.Run(async () =>
@@ -38,18 +67,12 @@ public class AnimationSampleProducer : IDisposable
                     UnitAnimationSample sample;
                     try
                     {
-                        int count = 1024;
-                        if (count > (fs.Length - fs.Position)) {
-                            count = (int)(fs.Length - fs.Position);
-                        }
-                        byte[] bytes = new byte[count];
-                        fs.Read(bytes, 0, count);
-                        //Debug.Log(string.Join(", ", bytes));
-                        stream.Feed(bytes);
-                        sample = stream.NextUnitSample();
-                        if (!sample.IsValid()) {
-                            continue;
-                        }
+			            sample = GetNextSample(stream, fs);
+                    }
+                    catch (EndOfStreamException)
+                    {
+                        Debug.Log("End of file");
+                        break;
                     }
                     catch (Exception ex)
                     {
