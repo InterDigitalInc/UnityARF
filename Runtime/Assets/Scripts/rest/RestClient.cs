@@ -18,6 +18,8 @@ public class RestClient : MonoBehaviour
     public bool loadSkeletons = true;
     public bool loadSkins = true;
     public string animationFrameworkURN = "urn:mpeg:morgan:blendshapes";
+    public bool useAAU = true;
+    public long blendshapeSetId = 1;
 
     private ArfAvatar avatar;
     private AnimationMapper mapper;
@@ -41,7 +43,6 @@ public class RestClient : MonoBehaviour
         animationFramework = avatar.faceAnimations[animationFrameworkURN];
         blendshapesName = animationFramework.GetInputNames();
         animationData = animationFramework.CreateData();
-        
     }
 
     void OnEnable()
@@ -90,7 +91,7 @@ public class RestClient : MonoBehaviour
         if (content == null) return;
         var faces = content.faces;
         var contentBlendshapesName = content.blendshapesName;
-        if (index < 0 ||  index >= faces.Count) return;
+        if (index < 0 || index >= faces.Count) return;
         var face = faces[index];
         if (face.blendshapes == null) return;
         var contentWeights = face.blendshapes.weights;
@@ -116,8 +117,21 @@ public class RestClient : MonoBehaviour
                 weights[i] = 0;
             }
         }
-        animationData.weights = weights;
-        mapper.UpdateComponents(components, animationData);
+        if (useAAU) {
+            BlendshapeAnimationSample blendshapeAnimationSample = BlendshapeAnimationSample.Create();
+            blendshapeAnimationSample.setId = blendshapeSetId;
+            blendshapeAnimationSample.confidencePresent = false;
+            blendshapeAnimationSample.SetBlendshapeCount(weights.Length);
+            for (long i = 0; i < weights.Length; i++) { 
+                blendshapeAnimationSample.SetBlendshapeId(i, i);
+                blendshapeAnimationSample.SetBlendshapeWeight(i, weights[i]);
+            }
+            mapper.UpdateComponents(components, blendshapeAnimationSample);
+        }
+        else { 
+            animationData.weights = weights;
+            mapper.UpdateComponents(components, animationData);
+        }
         avatar.UpdateGameObjects();
     }
 }
