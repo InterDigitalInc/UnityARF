@@ -19,6 +19,14 @@ This version respects the standard defined during MPEG meeting 152.
    ```
 5. Click <kbd>Add</kbd>.
 
+# Supported Platforms
+
+* Windows 11 / x86_64
+* Ubuntu 24.04 / x86_64
+* Android 21 / ARMv7
+* Android 21 / ARM64v8
+* Android 21 / x86_64
+
 # License
 
 Creation Commons Attribution-NonCommercial 4.0 International
