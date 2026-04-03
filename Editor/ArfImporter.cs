@@ -13,7 +13,7 @@ using System.Collections.Generic;
 namespace Interdigital {
 namespace Arf {
 
-[ScriptedImporter(1, new[] { "zip", "arf" })]
+[ScriptedImporter(1, new[] { "zip", "arf", "arfz" })]
 public class ArfImporter : ScriptedImporter
 {
     [SerializeField] public string lodName = "high_quality";
