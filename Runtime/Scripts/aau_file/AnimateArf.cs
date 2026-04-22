@@ -6,6 +6,7 @@
 using Interdigital.Arf;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Playables;
@@ -20,6 +21,7 @@ public class AnimateArf : MonoBehaviour
     public bool loadBlendshapes = true;
     public bool loadSkeletons = true;
     public bool loadSkins = true;
+    public bool convertAxis = true;
     public string animationFilePath;
     public string animationFrameworkURN = "urn:mpeg:avatar:blendshapes:mediapipe";
 
@@ -95,22 +97,65 @@ public class AnimateArf : MonoBehaviour
             if (sample.GetUnitType() == AnimationUnitType.AAU_BLENDSHAPE)
             { 
                 var blendshape = sample.ToBlendshapeSample(); 
-                Debug.Log($"Blendshape w9: {blendshape.GetBlendshapeWeight(9)}");
+                //Debug.Log($"Blendshape w9: {blendshape.GetBlendshapeWeight(9)}");
                 mapper.UpdateComponents(components, blendshape);
-                avatar.UpdateGameObjects();
+                avatar.UpdateGameObjects(convertAxis);
             }
             else if (sample.GetUnitType() == AnimationUnitType.AAU_JOINT)
             { 
                 var joint = sample.ToJointSample(); 
                 mapper.UpdateComponents(components, joint);
-                avatar.UpdateGameObjects();
+                avatar.UpdateGameObjects(convertAxis);
             }
             break;
         }
     }
 
 
+    List<GameObject> orderedJoints = new List<GameObject>();
+    int currentId = 0;
+    void BuildNodes(Transform root)
+    {
+        if (root == null)
+            return;
 
+        orderedJoints.Clear();
+        currentId = 0;
+
+        void Traverse(Transform t)
+        {
+            bool isOriginalRoot = (t == root);
+
+            if (!isOriginalRoot) // todo see if we keep that
+            {
+                orderedJoints.Add(t.gameObject);
+
+                int id = currentId;
+                currentId++;
+
+                GameObject meshGO = t.gameObject;
+
+                ArfComponent component = meshGO.GetComponent<ArfComponent>();
+                if (component == null)
+                {
+                    component = meshGO.AddComponent<ArfComponent>();
+                }
+
+                component.skeleton = 0;
+
+                SkinnedMeshRenderer renderer = meshGO.GetComponent<SkinnedMeshRenderer>();
+                if (renderer == null)
+                    renderer = meshGO.AddComponent<SkinnedMeshRenderer>();
+            }
+
+            for (int i = 0; i < t.childCount; i++)
+            {
+                Traverse(t.GetChild(i));
+            }
+        }
+
+        Traverse(root);
+    }
 }
 
 }

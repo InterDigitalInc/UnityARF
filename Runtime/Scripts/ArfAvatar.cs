@@ -67,12 +67,12 @@ public class ArfAvatar : MonoBehaviour
         animationComponents = new AnimationComponents(arf);
     }
 
-    public void UpdateGameObjects()
+    public void UpdateGameObjects(bool convertAxis = true)
     {
-        UpdateGameObjects(gameObject);
+        UpdateGameObjects(gameObject, convertAxis);
     }
 
-    public void UpdateGameObjects(GameObject gameObject) 
+    public void UpdateGameObjects(GameObject gameObject, bool convertAxis = true) 
     {
         if (gameObject.TryGetComponent(out ArfComponent component))
         {
@@ -96,9 +96,8 @@ public class ArfAvatar : MonoBehaviour
                     //Debug.Log(string.Join(", ", transforms));
                     //Debug.Log(string.Join(", ", transforms.Skip(16).Take(16)));
                     //Debug.Log(string.Join(", ", transforms.Skip(16*39).Take(16)));
-
                     for (int i = 0; i < jointCount; i++) {
-                        Matrix4x4 mat = UnityConvert.ToMatrix4x4(transforms, i * 16);
+                        Matrix4x4 mat = UnityConvert.ToMatrix4x4(transforms, i * 16, convertAxis);
                         if (transposeTransforms) {
                             mat = mat.transpose;
                         }
@@ -110,7 +109,7 @@ public class ArfAvatar : MonoBehaviour
         
         foreach (Transform child in gameObject.transform)
         {
-            UpdateGameObjects(child.gameObject);
+            UpdateGameObjects(child.gameObject, convertAxis);
         }
     }
 };

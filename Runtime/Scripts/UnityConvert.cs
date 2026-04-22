@@ -10,35 +10,47 @@ namespace Interdigital {
 
 public class UnityConvert
 { 
-    public static Matrix4x4 ToMatrix4x4(float[] data, int offset = 0)
+    public static Matrix4x4 ToMatrix4x4(float[] data, int offset = 0, bool convertAxis = true)
     {
-        Vector4 column0 = new Vector4(
-            data[offset + 0],
-            -data[offset + 1],
-            -data[offset + 2],
-            -data[offset + 3]
-        );
-        Vector4 column1 = new Vector4(
-            -data[offset + 4],
-            data[offset + 5],
-            data[offset + 6],
-            data[offset + 7]
-        );
-        Vector4 column2 = new Vector4(
-            -data[offset + 8],
-            data[offset + 9],
-            data[offset + 10],
-            data[offset + 11]
-        );
-        Vector4 column3 = new Vector4(
-            -data[offset + 12],
-            data[offset + 13],
-            data[offset + 14],
-            data[offset + 15]
-        );
-        return new Matrix4x4(
-            column0, column1, column2, column3
-        );
+        if (convertAxis) 
+        {
+            Vector4 column0 = new Vector4(
+                data[offset + 0],
+                -data[offset + 1],
+                -data[offset + 2],
+                -data[offset + 3]
+            );
+            Vector4 column1 = new Vector4(
+                -data[offset + 4],
+                data[offset + 5],
+                data[offset + 6],
+                data[offset + 7]
+            );
+            Vector4 column2 = new Vector4(
+                -data[offset + 8],
+                data[offset + 9],
+                data[offset + 10],
+                data[offset + 11]
+            );
+            Vector4 column3 = new Vector4(
+                -data[offset + 12],
+                data[offset + 13],
+                data[offset + 14],
+                data[offset + 15]
+            );
+            return new Matrix4x4(
+                column0, column1, column2, column3
+            );
+        }
+        else 
+        {
+            Matrix4x4 mat = new Matrix4x4();
+            mat.m00 = data[offset+0];  mat.m01 = data[offset+1];  mat.m02 = data[offset+2];  mat.m03 = data[offset+3];
+            mat.m10 = data[offset+4];  mat.m11 = data[offset+5];  mat.m12 = data[offset+6];  mat.m13 = data[offset+7];
+            mat.m20 = data[offset+8];  mat.m21 = data[offset+9];  mat.m22 = data[offset+10]; mat.m23 = data[offset+11];
+            mat.m30 = data[offset+12]; mat.m31 = data[offset+13]; mat.m32 = data[offset+14]; mat.m33 = data[offset+15];
+            return mat;
+        }
     }
 
     public static Matrix4x4 ToMatrix4x4(double[] data, int offset = 0)
