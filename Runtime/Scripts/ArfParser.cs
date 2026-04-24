@@ -189,6 +189,7 @@ public class ArfParser
     {
         Transform[] bones = null;
         Matrix4x4[] bindPoses = null;
+
         long[] jointIds = skeleton.joints.GetValues();
         bones = new Transform[jointIds.Length];
         Dictionary<long, int> jointId2Idx = new Dictionary<long, int>();
@@ -279,9 +280,14 @@ public class ArfParser
         UnityEngine.Mesh unityMesh = renderer.sharedMesh;
         Vector3[] baseVertices = unityMesh.vertices;
         //Debug.Log($"Add blendshapes to mesh...");
+        var blendshapes = new SortedDictionary<long, Blendshape>();
+        foreach(var blendshape in blendshapeSet.shapes) {
+            blendshapes.Add(blendshape.id, blendshape);
+        }
         int blendshapeIndex = 0;
-        foreach(var blendshape in blendshapeSet.shapes) 
+        foreach(var ite in blendshapes) 
         {
+            var blendshape = ite.Value;
             var shape = blendshape.shape;
             //Debug.Log($"Add blendshape {shape.name}...");
             Gltf gltf = shape.GetGltf();

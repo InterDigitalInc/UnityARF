@@ -23,7 +23,7 @@ public class AnimateArf : MonoBehaviour
     public bool loadSkins = true;
     public bool convertAxis = true;
     public string animationFilePath;
-    public string animationFrameworkURN = "urn:mpeg:avatar:blendshapes:mediapipe";
+    public string animationFrameworkURN = "urn:blender:avatar:animation:2024";
 
     public int maxQueueSize = 10;
     private ConcurrentQueue<UnitAnimationSample> queue;
@@ -61,7 +61,7 @@ public class AnimateArf : MonoBehaviour
         );
         avatar = avatarObject.GetComponent<ArfAvatar>();
         components = avatar.animationComponents;
-        mapper = avatar.animationMappers[animationFrameworkURN];
+        mapper = avatar.bodyMappers[animationFrameworkURN];
         arf.Close();
 
         timeAccumulator = 0;

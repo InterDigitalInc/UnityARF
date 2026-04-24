@@ -44,7 +44,7 @@ public class RestClient : MonoBehaviour
         );
         avatar = avatarObject.GetComponent<ArfAvatar>();
         components = avatar.animationComponents;
-        mapper = avatar.animationMappers[animationFrameworkURN];
+        mapper = avatar.faceMappers[animationFrameworkURN];
         animationFramework = avatar.faceAnimations[animationFrameworkURN];
         blendshapesName = animationFramework.GetInputNames();
         animationData = animationFramework.CreateData();

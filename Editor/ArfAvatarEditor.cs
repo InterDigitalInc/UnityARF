@@ -41,7 +41,7 @@ public class ArfAvatarEditor : UnityEditor.Editor
             AnimationFramework framework = avatar.faceAnimations[urn];
             ArfControllers controllers;
             if (!faceControllers.ContainsKey(urn)) {
-                controllers = new ArfControllers(framework, avatar.animationMappers[urn]);
+                controllers = new ArfControllers(framework, avatar.faceMappers[urn]);
                 faceControllers[urn] = controllers;
             }
             else {

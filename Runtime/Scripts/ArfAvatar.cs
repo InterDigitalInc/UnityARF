@@ -18,8 +18,9 @@ public class ArfAvatar : MonoBehaviour
     private bool transposeTransforms = true;
 
     public Dictionary<string, AnimationFramework> faceAnimations = new Dictionary<string, AnimationFramework>();
+    public Dictionary<string, AnimationMapper> faceMappers = new Dictionary<string, AnimationMapper>();
     public Dictionary<string, AnimationFramework> bodyAnimations = new Dictionary<string, AnimationFramework>();
-    public Dictionary<string, AnimationMapper> animationMappers = new Dictionary<string, AnimationMapper>();
+    public Dictionary<string, AnimationMapper> bodyMappers = new Dictionary<string, AnimationMapper>();
 
     public AnimationComponents animationComponents;
 
@@ -39,12 +40,15 @@ public class ArfAvatar : MonoBehaviour
             { 
                 try 
                 {
-                    AnimationFramework framework = AnimationFramework.Create(urn);    
+                    AnimationFramework framework = AnimationFramework.TryCreate(arf, "ANIMATION_FACE", urn);    
+                    if (framework == null) {
+                        framework = AnimationFramework.Create(urn);
+                    }
                     faceAnimations[urn] = framework;
-                    animationMappers[urn] = new AnimationMapper(arf, framework);
+                    faceMappers[urn] = new AnimationMapper(arf, framework);
                 }
                 catch(Exception ex) {
-                    Debug.LogWarning($"Animation framework {urn} is ignored because it is not supported (error: {ex})");
+                    Debug.LogWarning($"Face animation framework {urn} is ignored because it is not supported (error: {ex})");
                 }
             }
         }
@@ -54,12 +58,15 @@ public class ArfAvatar : MonoBehaviour
             { 
                 try 
                 {
-                    AnimationFramework framework = AnimationFramework.Create(urn);    
+                    AnimationFramework framework = AnimationFramework.TryCreate(arf, "ANIMATION_BODY", urn);    
+                    if (framework == null) {
+                        framework = AnimationFramework.Create(urn);
+                    }
                     bodyAnimations[urn] = framework;
-                    animationMappers[urn] = new AnimationMapper(arf, framework);
+                    bodyMappers[urn] = new AnimationMapper(arf, framework);
                 }
                 catch(Exception ex) {
-                    Debug.LogWarning($"Animation framework {urn} is ignored because it is not supported (error: {ex})");
+                    Debug.LogWarning($"Body animation framework {urn} is ignored because it is not supported (error: {ex})");
                 }
             }
         }
