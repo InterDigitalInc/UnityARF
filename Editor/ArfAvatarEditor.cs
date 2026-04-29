@@ -30,7 +30,30 @@ public class ArfAvatarEditor : UnityEditor.Editor
         EditorGUILayout.LabelField("Id", avatar.id);
         EditorGUILayout.DoubleField("Age", avatar.age);
         EditorGUILayout.LabelField("Gender", avatar.gender);
+
+        EditorGUILayout.LabelField("Face URNs:");
+		EditorGUI.indentLevel++;
+		EditorGUILayout.HelpBox(string.Join("\n", avatar.faceURNs), MessageType.None);
+		EditorGUI.indentLevel--;
         EditorGUI.EndDisabledGroup();
+		
+        EditorGUILayout.LabelField("Face mapper URNs:");
+		EditorGUI.indentLevel++;
+		EditorGUILayout.HelpBox(string.Join("\n", avatar.faceMapperURNs), MessageType.None);
+		EditorGUI.indentLevel--;
+        EditorGUI.EndDisabledGroup();
+		
+        EditorGUILayout.LabelField("Body URNs:");
+		EditorGUI.indentLevel++;
+		EditorGUILayout.HelpBox(string.Join("\n", avatar.bodyURNs), MessageType.None);
+		EditorGUI.indentLevel--;
+        EditorGUI.EndDisabledGroup();		
+
+        EditorGUILayout.LabelField("Body mapper URNs:");
+		EditorGUI.indentLevel++;
+		EditorGUILayout.HelpBox(string.Join("\n", avatar.bodyMapperURNs), MessageType.None);
+		EditorGUI.indentLevel--;
+        EditorGUI.EndDisabledGroup();		
 
         if (avatar.faceAnimations.Count > 0)
         {

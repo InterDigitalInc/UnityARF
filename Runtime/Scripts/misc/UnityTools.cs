@@ -4,11 +4,12 @@
 // See LICENSE under the root folder.
 //
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-class UnityTools
+public class UnityTools
 {
     public static string GetRendererType()
     {    
@@ -46,6 +47,19 @@ class UnityTools
         else {
             return null;
         }
+    }
+
+    public static string HashBytes(byte[] data)
+    {
+        using var sha = SHA256.Create();
+        byte[] hash = sha.ComputeHash(data);
+
+        // Convert to hex string
+        var sb = new StringBuilder(hash.Length * 2);
+        foreach (byte b in hash)
+            sb.AppendFormat("{0:x2}", b);
+
+        return sb.ToString();
     }
 
     public class LogTextWriter : TextWriter

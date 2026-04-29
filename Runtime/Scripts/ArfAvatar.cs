@@ -4,8 +4,9 @@
 // See LICENSE under the root folder.
 //
 using System;
-using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 
 namespace Interdigital {
 namespace Arf {
@@ -23,6 +24,11 @@ public class ArfAvatar : MonoBehaviour
     public Dictionary<string, AnimationMapper> bodyMappers = new Dictionary<string, AnimationMapper>();
 
     public AnimationComponents animationComponents;
+
+    public List<string> faceURNs = new List<string>();
+    public List<string> bodyURNs = new List<string>();
+    public string[] faceMapperURNs => faceMappers.Keys.ToArray();
+    public string[] bodyMapperURNs => bodyMappers.Keys.ToArray();
 
     public void Init(Arf arf)
     {
@@ -46,6 +52,7 @@ public class ArfAvatar : MonoBehaviour
                     }
                     faceAnimations[urn] = framework;
                     faceMappers[urn] = new AnimationMapper(arf, framework);
+                    faceURNs.Add(urn);
                 }
                 catch(Exception ex) {
                     Debug.LogWarning($"Face animation framework {urn} is ignored because it is not supported (error: {ex})");
@@ -64,6 +71,7 @@ public class ArfAvatar : MonoBehaviour
                     }
                     bodyAnimations[urn] = framework;
                     bodyMappers[urn] = new AnimationMapper(arf, framework);
+                    bodyURNs.Add(urn);
                 }
                 catch(Exception ex) {
                     Debug.LogWarning($"Body animation framework {urn} is ignored because it is not supported (error: {ex})");

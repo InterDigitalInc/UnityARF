@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Playables;
+using UnityEngine.InputSystem;
+using System.Linq;
 
 namespace Interdigital {
 namespace Arf {
@@ -51,18 +53,31 @@ public class AnimateArf : MonoBehaviour
 
     void Start()
     {       
-        ArfParser arf = ArfParser.Load(filePath); 
-        
-        GameObject avatarObject = arf.createAvatar(
-            transform, lodName,
-            loadBlendshapes: loadBlendshapes,
-            loadSkeletons: loadSkeletons,
-            loadSkins: loadSkins
-        );
+        GameObject avatarObject;
+        const string resourcesPrefix = "Assets/Resources/";
+        if (filePath.StartsWith(resourcesPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            string resourcePath = filePath.Substring(resourcesPrefix.Length);
+            resourcePath = Path.ChangeExtension(resourcePath, null);
+            avatarObject = Resources.Load<GameObject>(resourcePath);
+            Debug.Log("Load resource");
+        }
+        else
+        { 
+            ArfParser arf = ArfParser.Load(filePath);        
+            avatarObject = arf.createAvatar(
+                transform, lodName,
+                loadBlendshapes: loadBlendshapes,
+                loadSkeletons: loadSkeletons,
+                loadSkins: loadSkins
+            );
+            arf.Close();
+        }
         avatar = avatarObject.GetComponent<ArfAvatar>();
         components = avatar.animationComponents;
+        Debug.Log(string.Join(", ", avatar.bodyURNs));
+        Debug.Log(string.Join(", ", avatar.bodyMappers.Keys.ToArray<string>()));
         mapper = avatar.bodyMappers[animationFrameworkURN];
-        arf.Close();
 
         timeAccumulator = 0;
     }
@@ -76,6 +91,11 @@ public class AnimateArf : MonoBehaviour
         //Debug.Log($"timeAccumulator = {timeAccumulator}");
         while (queue.TryPeek(out var sample))
         {           
+            if (Keyboard.current != null &&
+                Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                Application.Quit();
+            }
             if (sample.GetUnitType() == AnimationUnitType.AAU_CONFIG) 
             {
                 var config = sample.ToConfigSample();
@@ -92,7 +112,7 @@ public class AnimateArf : MonoBehaviour
             if (timestamp > timeAccumulator) {
                 break; // change to continue when problems are solved
             }
-            Debug.Log($"timeAccumulator: {timeAccumulator}, timestamp: {timestamp}, type: {sample.GetUnitType()}");
+            //Debug.Log($"timeAccumulator: {timeAccumulator}, timestamp: {timestamp}, type: {sample.GetUnitType()}");
             queue.TryDequeue(out _);
             if (sample.GetUnitType() == AnimationUnitType.AAU_BLENDSHAPE)
             { 
@@ -109,52 +129,6 @@ public class AnimateArf : MonoBehaviour
             }
             break;
         }
-    }
-
-
-    List<GameObject> orderedJoints = new List<GameObject>();
-    int currentId = 0;
-    void BuildNodes(Transform root)
-    {
-        if (root == null)
-            return;
-
-        orderedJoints.Clear();
-        currentId = 0;
-
-        void Traverse(Transform t)
-        {
-            bool isOriginalRoot = (t == root);
-
-            if (!isOriginalRoot) // todo see if we keep that
-            {
-                orderedJoints.Add(t.gameObject);
-
-                int id = currentId;
-                currentId++;
-
-                GameObject meshGO = t.gameObject;
-
-                ArfComponent component = meshGO.GetComponent<ArfComponent>();
-                if (component == null)
-                {
-                    component = meshGO.AddComponent<ArfComponent>();
-                }
-
-                component.skeleton = 0;
-
-                SkinnedMeshRenderer renderer = meshGO.GetComponent<SkinnedMeshRenderer>();
-                if (renderer == null)
-                    renderer = meshGO.AddComponent<SkinnedMeshRenderer>();
-            }
-
-            for (int i = 0; i < t.childCount; i++)
-            {
-                Traverse(t.GetChild(i));
-            }
-        }
-
-        Traverse(root);
     }
 }
 

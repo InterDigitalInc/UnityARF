@@ -63,7 +63,8 @@ public class ArfImporter : ScriptedImporter
 
         ctx.AddObjectToAsset("main", asset);
         ctx.SetMainObject(asset);
-        parser.Dispose();
+        parser.Close();
+		parser.Dispose();
     }
 }
 

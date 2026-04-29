@@ -19,6 +19,7 @@ public class AnimationSampleProducer : IDisposable
     private readonly int maxQueueSize;
     private readonly CancellationTokenSource cts = new();
     private Task worker;
+    private Stream fs;
 
     public AnimationSampleProducer(string path, ConcurrentQueue<UnitAnimationSample> queue, int maxQueueSize = 300)
     {
@@ -27,7 +28,7 @@ public class AnimationSampleProducer : IDisposable
         this.maxQueueSize = maxQueueSize;
     }
 
-    public static UnitAnimationSample GetNextSample(Interdigital.Arf.AnimationSampleStream stream, FileStream fs)
+    public static UnitAnimationSample GetNextSample(Interdigital.Arf.AnimationSampleStream stream, Stream fs)
 	{
 		while(true)
 		{
@@ -40,7 +41,7 @@ public class AnimationSampleProducer : IDisposable
 			    if (fs.Position >= fs.Length) {
 					throw new EndOfStreamException();
 				}
-				int count = 1024;
+				int count = 100024;
 				if (count > (fs.Length - fs.Position)) {
 					count = (int)(fs.Length - fs.Position);
 				}
@@ -58,47 +59,55 @@ public class AnimationSampleProducer : IDisposable
 
     public void Start()
     {
-        worker = Task.Run(async () =>
-        {
-            try
-            {
-                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 64 * 1024, useAsync: true);
-                AnimationSampleStream stream = new AnimationSampleStream();
-                while (!cts.IsCancellationRequested && fs.Position < fs.Length)
-                {
-                    while (queue.Count >= maxQueueSize && !cts.IsCancellationRequested)
-                        await Task.Delay(5, cts.Token);
+        fs = StreamLoader.OpenRead(path);
+        worker = Task.Run(() => WorkerLoop(cts.Token), cts.Token);
+    }
 
-                    UnitAnimationSample sample;
-                    try
-                    {
-			            sample = GetNextSample(stream, fs);
-                    }
-                    catch (EndOfStreamException)
-                    {
-                        Debug.Log("End of file");
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"Failed to parse animation sample: {ex.Message}");
-                        break;
-                    }
-                    queue.Enqueue(sample);
-                }
-            }
-            catch (OperationCanceledException) { /* normal shutdown */ }
-            catch (Exception ex)
+    public async Task WorkerLoop(CancellationToken token)
+    {
+        try
+        {                
+            AnimationSampleStream stream = new AnimationSampleStream();
+            while (!cts.IsCancellationRequested && fs.Position < fs.Length)
             {
-                Debug.LogError($"AnimationSampleProducer error: {ex}");
+                while (queue.Count >= maxQueueSize && !cts.IsCancellationRequested)
+                    await Task.Delay(5, token);
+
+                UnitAnimationSample sample;
+                try
+                {
+			        sample = GetNextSample(stream, fs);
+                    if (fs.Position >= fs.Length) {
+                        fs.Seek(0, SeekOrigin.Begin);
+                    }
+                }
+                catch (EndOfStreamException)
+                {
+                    fs.Seek(0, SeekOrigin.Begin);
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"Failed to parse animation sample: {ex.Message}");
+                    break;
+                }
+                queue.Enqueue(sample);
             }
-        }, cts.Token);
+        }
+        catch (OperationCanceledException) { /* normal shutdown */ }
+        catch (Exception ex)
+        {
+            Debug.LogError($"AnimationSampleProducer error: {ex}");
+        }
     }
 
     public void Stop()
     {
         cts.Cancel();
         try { worker?.Wait(500); } catch { }
+        fs?.Dispose();
+        fs = null;
+
     }
 
     public void Dispose() => Stop();
