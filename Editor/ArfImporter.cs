@@ -16,26 +16,23 @@ namespace Arf {
 [ScriptedImporter(1, new[] { "zip", "arf", "arfz" })]
 public class ArfImporter : ScriptedImporter
 {
-    [SerializeField] public string lodName = "high_quality";
-    [SerializeField] public bool loadBlendshapes = true;
-    [SerializeField] public bool loadSkeletons = true;
-    [SerializeField] public bool loadSkins = true;
-    [SerializeField] public bool transposeInverseBindMatrices = true;
-    [SerializeField] public bool transposeNodeTransforms = true;
+    [SerializeField] public ArfParserOptions options;
 
     public override void OnImportAsset(AssetImportContext ctx)
     {        
         AssetCache cache = new AssetCache();
         ArfParser parser = ArfParser.Load(ctx.assetPath, cache);
-        GameObject asset = parser.createAvatar(
-            null, lodName,
-            loadBlendshapes: loadBlendshapes,
-            loadSkeletons: loadSkeletons,
-            loadSkins: loadSkins, 
-            transposeNodeTransforms: transposeNodeTransforms,
-            transposeInverseBindMatrices: transposeInverseBindMatrices
-        );
+	
+        GameObject asset = parser.createAvatar(options);
+        ctx.AddObjectToAsset("main", asset);
+        ctx.SetMainObject(asset);
 
+		var jsonAsset = new TextAsset(parser.arf.ToJsonString());
+		jsonAsset.name = "arf.json";
+		var holder = asset.AddComponent<ArfDataHolder>();
+		holder.json = jsonAsset;
+		ctx.AddObjectToAsset("arf.json", jsonAsset);
+		
         foreach(var mesh in cache.meshes) {
             //Debug.Log(mesh.Key);
 			try {
@@ -61,8 +58,6 @@ public class ArfImporter : ScriptedImporter
 			}
         }
 
-        ctx.AddObjectToAsset("main", asset);
-        ctx.SetMainObject(asset);
         parser.Close();
 		parser.Dispose();
     }

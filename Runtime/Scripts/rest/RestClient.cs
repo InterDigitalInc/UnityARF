@@ -18,10 +18,7 @@ public class RestClient : MonoBehaviour
     private FacesResult lastResult;
 
     public string filePath;
-    public string lodName = "high_quality";
-    public bool loadBlendshapes = true;
-    public bool loadSkeletons = true;
-    public bool loadSkins = true;
+    public ArfParserOptions options = new ArfParserOptions();
     public string animationFrameworkURN = "urn:mpeg:morgan:blendshapes";
     public bool useAAU = true;
     public long blendshapeSetId = 1;
@@ -35,20 +32,13 @@ public class RestClient : MonoBehaviour
 
     private void Start()
     {
-        ArfParser arf = ArfParser.Load(filePath);         
-        GameObject avatarObject = arf.createAvatar(
-            transform, lodName,
-            loadBlendshapes: loadBlendshapes,
-            loadSkeletons: loadSkeletons,
-            loadSkins: loadSkins
-        );
+        GameObject avatarObject = ArfParser.LoadAvatar(filePath, options);     
         avatar = avatarObject.GetComponent<ArfAvatar>();
         components = avatar.animationComponents;
         mapper = avatar.faceMappers[animationFrameworkURN];
         animationFramework = avatar.faceAnimations[animationFrameworkURN];
         blendshapesName = animationFramework.GetInputNames();
         animationData = animationFramework.CreateData();
-        arf.Close();
     }
 
     void OnEnable()

@@ -25,10 +25,8 @@ public class ArfAvatar : MonoBehaviour
 
     public AnimationComponents animationComponents;
 
-    public List<string> faceURNs = new List<string>();
-    public List<string> bodyURNs = new List<string>();
-    public string[] faceMapperURNs => faceMappers.Keys.ToArray();
-    public string[] bodyMapperURNs => bodyMappers.Keys.ToArray();
+    public string[] faceURNs = new string[0];
+    public string[] bodyURNs = new string[0];
 
     public void Init(Arf arf)
     {
@@ -38,6 +36,22 @@ public class ArfAvatar : MonoBehaviour
         age = metadata.age;
         gender = metadata.gender;
 
+        Preamble preamble = arf.preamble;
+        SupportedAnimations supportedAnimations = preamble.supportedAnimations;
+        if (supportedAnimations.HasFaceAnimations()) {
+            faceURNs = supportedAnimations.faceAnimations;
+        }
+        if (supportedAnimations.HasBodyAnimations()) {
+            bodyURNs = supportedAnimations.bodyAnimations;
+        }
+    }
+
+    /// <summary>
+    /// Create native objects (mappers, components, ...)
+    /// </summary>
+    /// <param name="arf"></param>
+    public void InitNative(Arf arf)
+    {
         Preamble preamble = arf.preamble;
         SupportedAnimations supportedAnimations = preamble.supportedAnimations;
         if (supportedAnimations.HasFaceAnimations()) 
@@ -52,7 +66,6 @@ public class ArfAvatar : MonoBehaviour
                     }
                     faceAnimations[urn] = framework;
                     faceMappers[urn] = new AnimationMapper(arf, framework);
-                    faceURNs.Add(urn);
                 }
                 catch(Exception ex) {
                     Debug.LogWarning($"Face animation framework {urn} is ignored because it is not supported (error: {ex})");
@@ -71,7 +84,6 @@ public class ArfAvatar : MonoBehaviour
                     }
                     bodyAnimations[urn] = framework;
                     bodyMappers[urn] = new AnimationMapper(arf, framework);
-                    bodyURNs.Add(urn);
                 }
                 catch(Exception ex) {
                     Debug.LogWarning($"Body animation framework {urn} is ignored because it is not supported (error: {ex})");
@@ -93,17 +105,17 @@ public class ArfAvatar : MonoBehaviour
         {
             if (gameObject.TryGetComponent(out SkinnedMeshRenderer renderer))
             {
-                if (component.blendshapeSet.HasValue) 
+                if (component.blendshapeSet >= 0) 
                 { 
-                    long blendshapeSet = component.blendshapeSet.Value;                
+                    long blendshapeSet = component.blendshapeSet;
                     float[] weights = animationComponents.GetBlendshapeWeights(blendshapeSet);
                     for (int i = 0; i < weights.Length; i++) {
                         renderer.SetBlendShapeWeight(i, weights[i]);
                     }
                 }
-                if (component.skeleton.HasValue) 
+                if (component.skeleton >= 0) 
                 { 
-                    long skeleton = component.skeleton.Value;        
+                    long skeleton = component.skeleton;        
                     long jointCount = animationComponents.GetJointCount(skeleton);
                     float[] transforms = animationComponents.GetJointTransforms(skeleton);
 

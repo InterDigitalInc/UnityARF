@@ -20,14 +20,15 @@ public class ArfComponentEditor : UnityEditor.Editor
 		if (!component) return;
 
         EditorGUI.BeginDisabledGroup(true);
-        if (component.mesh != null) {
-            EditorGUILayout.LongField("Mesh", component.mesh.Value);
+        EditorGUILayout.LongField("Asset", component.asset);
+        if (component.mesh >= 0) {
+            EditorGUILayout.LongField("Mesh", component.mesh);
         }
-        if (component.blendshapeSet != null) {
-            EditorGUILayout.LongField("Blendshape set", component.blendshapeSet.Value);
+        if (component.blendshapeSet >= 0) {
+            EditorGUILayout.LongField("Blendshape set", component.blendshapeSet);
         }
-        if (component.skeleton != null) {
-            EditorGUILayout.LongField("Skeleton", component.skeleton.Value);
+        if (component.skeleton >= 0) {
+            EditorGUILayout.LongField("Skeleton", component.skeleton);
         }
         EditorGUI.EndDisabledGroup();
     }

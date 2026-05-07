@@ -19,10 +19,7 @@ namespace Arf {
 public class AnimateArf : MonoBehaviour
 {
     public string filePath;
-    public string lodName = "high_quality";
-    public bool loadBlendshapes = true;
-    public bool loadSkeletons = true;
-    public bool loadSkins = true;
+    public ArfParserOptions options = new ArfParserOptions();
     public bool convertAxis = true;
     public string animationFilePath;
     public string animationFrameworkURN = "urn:blender:avatar:animation:2024";
@@ -53,30 +50,9 @@ public class AnimateArf : MonoBehaviour
 
     void Start()
     {       
-        GameObject avatarObject;
-        const string resourcesPrefix = "Assets/Resources/";
-        if (filePath.StartsWith(resourcesPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            string resourcePath = filePath.Substring(resourcesPrefix.Length);
-            resourcePath = Path.ChangeExtension(resourcePath, null);
-            avatarObject = Resources.Load<GameObject>(resourcePath);
-            Debug.Log("Load resource");
-        }
-        else
-        { 
-            ArfParser arf = ArfParser.Load(filePath);        
-            avatarObject = arf.createAvatar(
-                transform, lodName,
-                loadBlendshapes: loadBlendshapes,
-                loadSkeletons: loadSkeletons,
-                loadSkins: loadSkins
-            );
-            arf.Close();
-        }
+        GameObject avatarObject = ArfParser.LoadAvatar(filePath, options);  
         avatar = avatarObject.GetComponent<ArfAvatar>();
         components = avatar.animationComponents;
-        Debug.Log(string.Join(", ", avatar.bodyURNs));
-        Debug.Log(string.Join(", ", avatar.bodyMappers.Keys.ToArray<string>()));
         mapper = avatar.bodyMappers[animationFrameworkURN];
 
         timeAccumulator = 0;

@@ -4,19 +4,89 @@
 // See LICENSE under the root folder.
 //
 using Interdigital;
+using Interdigital.Archive;
 using Interdigital.Arf;
 using Interdigital.Gltf2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Interdigital {
 namespace Arf {
 
+[System.Serializable]
+public class ArfParserOptions
+{
+    public string lodName = "high_quality";
+    public bool loadBlendshapes = true;
+    public bool loadSkeletons = true;
+    public bool loadSkins = true;
+    public bool transposeNodeTransforms = true;
+    public bool transposeInverseBindMatrices = true;
+}
+
 public class ArfParser
 {
+    /// <summary>
+    /// Load an ARF container and creates a corresponding Unity game object.
+    /// 
+    /// If the filePath starts with "Assets/Resources/", the game object is taken from Unity assets (loading 
+    /// was done when the ARF container was imported). In this case, options are ignored (ones used during import
+    /// were used).
+    /// If the filePath does not start with with "Assets/Resources/", an ARF file is loaded from disk at run time.
+    /// In this case, options are used.
+    /// 
+    /// It is recommended to use this method to get an ARF avatar. Consider other methods in this class only if you
+    /// need to do a specific processing. 
+    /// 
+    /// </summary>
+    /// <param name="filePath"></param>
+    /// <param name="options"></param>
+    /// <param name="transform"></param>
+    /// <param name="cache"></param>
+    /// <returns></returns>
+    public static GameObject LoadAvatar(string filePath, ArfParserOptions options = null, 
+        Transform transform = null, AssetCache cache = null) 
+    {
+        if (options == null) {
+            options = new ArfParserOptions();
+        }
+        GameObject avatarObject;
+        const string resourcesPrefix = "Assets/Resources/";
+        if (filePath.StartsWith(resourcesPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            string resourcePath = filePath.Substring(resourcesPrefix.Length);
+            resourcePath = Path.ChangeExtension(resourcePath, null);
+            var prefab = Resources.Load<GameObject>(resourcePath);
+            avatarObject = GameObject.Instantiate(prefab);
+
+            var holder = avatarObject.GetComponent<ArfDataHolder>();
+            FileProvider fileProvider = FileProvider.CreateMemory();
+            fileProvider.Create("arf.json", Encoding.UTF8.GetBytes(holder.json.text));
+            Arf arf = Arf.Load(fileProvider);
+            ArfAvatar avatar = avatarObject.GetComponent<ArfAvatar>();
+            avatar.InitNative(arf);
+            arf.Close();
+        }
+        else
+        { 
+            ArfParser parser = ArfParser.Load(filePath);        
+            avatarObject = parser.createAvatar(options);
+            ArfAvatar avatar = avatarObject.GetComponent<ArfAvatar>();
+            avatar.InitNative(parser.arf);
+            parser.Close();
+        }
+
+        if (transform != null) {
+            avatarObject.transform.SetParent(transform);
+        }
+        return avatarObject;
+    }
+
     public static ArfParser Load(string filePath, AssetCache cache = null) {
         Arf arf = Arf.Load(filePath);
         return new ArfParser(arf, cache);
@@ -53,18 +123,12 @@ public class ArfParser
         arf.Close();
     }
 
-    public GameObject createAvatar(Transform transform, 
-                                   string lodName, 
-                                   bool loadBlendshapes = true, 
-                                   bool loadSkeletons = true, 
-                                   bool loadSkins = true, 
-                                   bool transposeNodeTransforms = true, 
-                                   bool transposeInverseBindMatrices = true)
+    public GameObject createAvatar(ArfParserOptions options = null)
     {
-        GameObject avatar = new GameObject(arf.metadata.name);
-        if (transform != null) {
-            avatar.transform.SetParent(transform);
+        if (options == null) {
+            options = new ArfParserOptions();
         }
+        GameObject avatar = new GameObject(arf.metadata.name);
         avatar.AddComponent<ArfAvatar>();
         avatar.GetComponent<ArfAvatar>().Init(arf);
         
@@ -72,8 +136,8 @@ public class ArfParser
         Dictionary<long, UnitySkeleton> skeletons = new Dictionary<long, UnitySkeleton>();
         foreach (Interdigital.Arf.Asset asset in arf.structure.assets)
         {
-            if (!asset.lods.HasByName(lodName)) {
-                Debug.LogWarning($"No LoD {lodName} in asset {asset.name}");
+            if (!asset.lods.HasByName(options.lodName)) {
+                Debug.LogWarning($"No LoD {options.lodName} in asset {asset.name}");
                 continue;
             }
 
@@ -81,14 +145,14 @@ public class ArfParser
             GameObject assetGO = new GameObject(asset.name);
             assetGO.transform.SetParent(avatar.transform);
 
-            Lod lod = asset.lods.GetByName(lodName);
+            Lod lod = asset.lods.GetByName(options.lodName);
 
-            if (loadSkeletons) { 
+            if (options.loadSkeletons) { 
                 foreach (Interdigital.Arf.Skeleton skeleton in lod.skeletons) {
                     if (!skeletons.ContainsKey(skeleton.id)) { 
                         skeletons[skeleton.id] = LoadSkeleton(
-                            skeleton, avatar.transform, transposeNodeTransforms: transposeNodeTransforms, 
-                            transposeInverseBindMatrices: transposeInverseBindMatrices
+                            skeleton, avatar.transform, transposeNodeTransforms: options.transposeNodeTransforms, 
+                            transposeInverseBindMatrices: options.transposeInverseBindMatrices
                         );
                     }
                 }
@@ -115,10 +179,10 @@ public class ArfParser
                     SetMesh(renderer, mesh);                
                 }
                 catch(Exception e) {
-                    throw new Exception($"Error setting mesh {mesh.id}, lod {lodName}, asset {asset.id}: {e.Message}");
+                    throw new Exception($"Error setting mesh {mesh.id}, lod {options.lodName}, asset {asset.id}: {e.Message}");
                 }
 
-                if (loadBlendshapes) 
+                if (options.loadBlendshapes) 
                 {
                     Interdigital.Arf.BlendshapeSet meshBlendshapeSet = null;
                     for(long lodBSIndex = 0; lodBSIndex < lod.blendshapeSets.Count; lodBSIndex++)
@@ -140,12 +204,12 @@ public class ArfParser
                             component.blendshapeSet = meshBlendshapeSet.id;
                         }
                         catch(Exception e) {
-                            throw new Exception($"Error setting blendshape set of mesh {mesh.id}, lod {lodName}, asset {asset.id}: {e.Message}");
+                            throw new Exception($"Error setting blendshape set of mesh {mesh.id}, lod {options.lodName}, asset {asset.id}: {e.Message}");
                         }
                     }
                 }
 
-                if (loadSkins)
+                if (options.loadSkins)
                 { 
                     Interdigital.Arf.Skin meshSkin = null;
                     for(long lodSkinIndex = 0; lodSkinIndex < lod.skins.Count; lodSkinIndex++)
@@ -168,7 +232,7 @@ public class ArfParser
                         }
                         catch(Exception e) {
                             Debug.LogError(e.StackTrace);
-                            throw new Exception($"Error setting skin of mesh {mesh.id}, lod {lodName}, asset {asset.id}: {e.Message}");
+                            throw new Exception($"Error setting skin of mesh {mesh.id}, lod {options.lodName}, asset {asset.id}: {e.Message}");
                         }
                     }
                 }
