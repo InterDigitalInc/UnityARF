@@ -62,6 +62,9 @@ public class ArfParser
             string resourcePath = filePath.Substring(resourcesPrefix.Length);
             resourcePath = Path.ChangeExtension(resourcePath, null);
             var prefab = Resources.Load<GameObject>(resourcePath);
+            if (prefab == null) {
+                throw new Exception($"Failed to load resource: {resourcePath}");
+            }
             avatarObject = GameObject.Instantiate(prefab);
 
             var holder = avatarObject.GetComponent<ArfDataHolder>();

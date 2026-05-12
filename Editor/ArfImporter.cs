@@ -22,11 +22,10 @@ public class ArfImporter : ScriptedImporter
     {        
         AssetCache cache = new AssetCache();
         ArfParser parser = ArfParser.Load(ctx.assetPath, cache);
-	
+
         GameObject asset = parser.createAvatar(options);
         ctx.AddObjectToAsset("main", asset);
-        ctx.SetMainObject(asset);
-
+	
 		var jsonAsset = new TextAsset(parser.arf.ToJsonString());
 		jsonAsset.name = "arf.json";
 		var holder = asset.AddComponent<ArfDataHolder>();
@@ -57,6 +56,8 @@ public class ArfImporter : ScriptedImporter
 				Debug.LogWarning(e.ToString(), texture.Value);
 			}
         }
+
+        ctx.SetMainObject(asset);
 
         parser.Close();
 		parser.Dispose();
