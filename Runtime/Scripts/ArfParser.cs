@@ -61,6 +61,7 @@ public class ArfParser
         {
             string resourcePath = filePath.Substring(resourcesPrefix.Length);
             resourcePath = Path.ChangeExtension(resourcePath, null);
+            Debug.Log($"Load {resourcePath}...");
             var prefab = Resources.Load<GameObject>(resourcePath);
             if (prefab == null) {
                 throw new Exception($"Failed to load resource: {resourcePath}");
@@ -77,6 +78,7 @@ public class ArfParser
         }
         else
         { 
+            Debug.Log($"Load {filePath}...");
             ArfParser parser = ArfParser.Load(filePath);        
             avatarObject = parser.createAvatar(options);
             ArfAvatar avatar = avatarObject.GetComponent<ArfAvatar>();
@@ -347,7 +349,7 @@ public class ArfParser
         UnityEngine.Mesh unityMesh = renderer.sharedMesh;
         Vector3[] baseVertices = unityMesh.vertices;
         //Debug.Log($"Add blendshapes to mesh...");
-        var blendshapes = new SortedDictionary<long, Blendshape>();
+        var blendshapes = new SortedDictionary<long, ShapeKey>();
         foreach(var blendshape in blendshapeSet.shapes) {
             blendshapes.Add(blendshape.id, blendshape);
         }
