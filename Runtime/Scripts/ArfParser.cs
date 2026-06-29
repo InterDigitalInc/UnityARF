@@ -12,6 +12,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Unity.VectorGraphics;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -350,15 +351,15 @@ public class ArfParser
         Vector3[] baseVertices = unityMesh.vertices;
         //Debug.Log($"Add blendshapes to mesh...");
         var blendshapes = new SortedDictionary<long, ShapeKey>();
-        foreach(var blendshape in blendshapeSet.shapes) {
-            blendshapes.Add(blendshape.id, blendshape);
+        foreach(var shape in blendshapeSet.shapes) {
+            blendshapes.Add(shape.id, shape);
         }
         int blendshapeIndex = 0;
         foreach(var ite in blendshapes) 
         {
             var blendshape = ite.Value;
+            //Debug.Log($"Add blendshape {blendshape.id}:{blendshape.name}...");
             var shape = blendshape.shape;
-            //Debug.Log($"Add blendshape {shape.name}...");
             Gltf gltf = shape.GetGltf();
             GltfParser gltfParser = new GltfParser(gltf);
             Interdigital.Gltf2.Mesh mesh = gltfParser.GetFirstMesh();
@@ -374,7 +375,7 @@ public class ArfParser
                     shapeValues[3*vertexIndex + 2]
                 ) - baseVertices[vertexIndex];
             }
-            unityMesh.AddBlendShapeFrame(shape.name, 1.0f, deltaVertices, null, null);
+            unityMesh.AddBlendShapeFrame(blendshape.name, 1.0f, deltaVertices, null, null);
             blendshapeIndex ++;
         }
     }

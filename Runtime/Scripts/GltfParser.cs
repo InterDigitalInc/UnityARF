@@ -108,54 +108,65 @@ public class GltfParser
         unityMesh.triangles = unityTriangles;
         unityMesh.RecalculateNormals();
 
-        // Uvs
-        DataTree uvs = primitive.GetAttribute("TEXCOORD_0").GetTensor();
-        long uvCount = uvs.GetTensorSize(0);
-        float[] uvValues = uvs.GetValues<float>();
-        Vector2[] unityUvs = new Vector2[uvCount];
-        for (long vertexIndex = 0; vertexIndex < uvCount; vertexIndex++) {
-            unityUvs[vertexIndex] = new Vector2(
-                uvValues[2*vertexIndex + 0],
-                uvValues[2*vertexIndex + 1]
-            );
-        }
-        unityMesh.uv = unityUvs;
-
-        // Texture
-        Interdigital.Gltf2.Material material = primitive.material;
-        TextureInfo baseColorTexture = material.pbrMetallicRoughness.baseColorTexture;
-        Interdigital.Gltf2.Texture texture = baseColorTexture.index;
-        DataTree image = texture.source.GetImage();
-        DataTree pixels = image["pixels"];
-        int width = (int)pixels.GetTensorSize(0);
-        int height = (int)pixels.GetTensorSize(1);
-        TextureFormat textureFormat;
-        int pixelFormat = (int)image["pixelFormat"].GetInteger();
-        if (pixelFormat == (int)PixelFormat.RGB) {
-            textureFormat = TextureFormat.RGB24;
-        }
-        else if (pixelFormat == (int)PixelFormat.RGBA) {
-            textureFormat = TextureFormat.RGBA32;
-        }
-        else {  
-            throw new Exception($"Invalid or unsupported pixel format {pixelFormat}");
-        }
         Shader shader = UnityTools.GetStandardShader();
         if (shader == null) {
             throw new Exception("Shader was not found");
         }
         UnityEngine.Material unityMaterial = new UnityEngine.Material(shader);
-        if (cache != null) {
-            cache.AddMaterial($"{material.GetPropertyIndex():D4}", unityMaterial);
+
+        // Texture
+        if (primitive.HasAttribute("TEXCOORD_0"))
+        { 
+            // Uvs
+            DataTree uvs = primitive.GetAttribute("TEXCOORD_0").GetTensor();
+            long uvCount = uvs.GetTensorSize(0);
+            float[] uvValues = uvs.GetValues<float>();
+            Vector2[] unityUvs = new Vector2[uvCount];
+            for (long vertexIndex = 0; vertexIndex < uvCount; vertexIndex++) {
+                unityUvs[vertexIndex] = new Vector2(
+                    uvValues[2*vertexIndex + 0],
+                    uvValues[2*vertexIndex + 1]
+                );
+            }
+            unityMesh.uv = unityUvs;
+
+            // Texture
+            Interdigital.Gltf2.Material material = primitive.material;
+            TextureInfo baseColorTexture = material.pbrMetallicRoughness.baseColorTexture;
+            Interdigital.Gltf2.Texture texture = baseColorTexture.index;
+            DataTree image = texture.source.GetImage();
+            DataTree pixels = image["pixels"];
+            int width = (int)pixels.GetTensorSize(0);
+            int height = (int)pixels.GetTensorSize(1);
+            TextureFormat textureFormat;
+            int pixelFormat = (int)image["pixelFormat"].GetInteger();
+            if (pixelFormat == (int)PixelFormat.RGB) {
+                textureFormat = TextureFormat.RGB24;
+            }
+            else if (pixelFormat == (int)PixelFormat.RGBA) {
+                textureFormat = TextureFormat.RGBA32;
+            }
+            else {  
+                throw new Exception($"Invalid or unsupported pixel format {pixelFormat}");
+            }
+
+            Texture2D unityTexture = new Texture2D(width, height, textureFormat, false);
+            if (cache != null) {
+                cache.AddTexture($"{texture.GetPropertyIndex():D4}", unityTexture);
+            }
+            byte[] bytes = pixels.GetValues<byte>();
+            unityTexture.LoadRawTextureData(bytes);
+            unityTexture.Apply();
+            unityMaterial.mainTexture = unityTexture;
+
+            if (cache != null) {
+                cache.AddMaterial($"{material.GetPropertyIndex():D4}", unityMaterial);
+            }
         }
-        Texture2D unityTexture = new Texture2D(width, height, textureFormat, false);
-        if (cache != null) {
-            cache.AddTexture($"{texture.GetPropertyIndex():D4}", unityTexture);
+        else
+        {
+            unityMaterial.color = Color.white;
         }
-        byte[] bytes = pixels.GetValues<byte>();
-        unityTexture.LoadRawTextureData(bytes);
-        unityTexture.Apply();
-        unityMaterial.mainTexture = unityTexture;
 
         if (Application.isPlaying) {
             renderer.material = unityMaterial;
