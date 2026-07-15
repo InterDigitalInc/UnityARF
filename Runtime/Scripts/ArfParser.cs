@@ -137,8 +137,7 @@ public class ArfParser
         GameObject avatar = new GameObject(arf.metadata.name);
         avatar.AddComponent<ArfAvatar>();
         avatar.GetComponent<ArfAvatar>().Init(arf);
-        
-        
+               
         Dictionary<long, UnitySkeleton> skeletons = new Dictionary<long, UnitySkeleton>();
         foreach (Interdigital.Arf.Asset asset in arf.structure.assets)
         {
@@ -395,7 +394,13 @@ public class ArfParser
         long jointPerVertex = 4;
         long vertexCount = renderer.sharedMesh.vertexCount;
         Data weightsData = skin.weights;
-        (jointIndices, jointWeights) = weightsData.GetColSparseTensor(jointPerVertex, jointPerVertex, normalize: true);
+       (jointIndices, jointWeights) = weightsData.GetColSparseTensor(jointPerVertex, jointPerVertex, normalize: true);
+                     if(weightsData.id == 73) { 
+                     DataTree tensor = weightsData.GetTensor();
+                        UnityConvert.saveTensor("c:\\temp\\imed_head_73_tensor.json", tensor);
+                        UnityConvert.saveTensor("c:\\temp\\imed_head_73_indices.json", jointIndices);
+                        UnityConvert.saveTensor("c:\\temp\\imed_head_73_weights.json", jointWeights);
+                        }
         if (vertexCount != jointIndices.GetTensorSize(0) || jointPerVertex != jointIndices.GetTensorSize(1)) {
             throw new Exception($"Invalid joint indices {vertexCount} != {jointIndices.GetTensorSize(0)} || {jointPerVertex} != {jointIndices.GetTensorSize(1)}");
         }

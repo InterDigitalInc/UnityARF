@@ -179,6 +179,14 @@ public class UnityConvert
         transform.localScale = scale;
     }
 
+    public static void saveTensor(string filePath, DataTree tensor)
+    {
+        using (System.IO.StreamWriter outputFile = new System.IO.StreamWriter(filePath)) 
+        {
+            outputFile.Write(tensor.ToJsonString());
+        }
+    }
+
     public static void saveVector3Ds(string filePath, Vector3[] vectors)
     {
         using (System.IO.StreamWriter outputFile = new System.IO.StreamWriter(filePath)) 

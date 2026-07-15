@@ -67,7 +67,7 @@ public class AnimationSampleProducer : IDisposable
     {
         try
         {                
-            AnimationSampleStream stream = new AnimationSampleStream();
+            AnimationSampleStream stream = new AnimationSampleStream(isLittleEndian:false);
             while (!cts.IsCancellationRequested && fs.Position < fs.Length)
             {
                 while (queue.Count >= maxQueueSize && !cts.IsCancellationRequested)
