@@ -134,7 +134,7 @@ public class ArfParser
         if (options == null) {
             options = new ArfParserOptions();
         }
-        GameObject avatar = new GameObject(arf.metadata.name);
+        GameObject avatar = new GameObject(arf.identity.name);
         avatar.AddComponent<ArfAvatar>();
         avatar.GetComponent<ArfAvatar>().Init(arf);
                
@@ -259,13 +259,13 @@ public class ArfParser
         Transform[] bones = null;
         Matrix4x4[] bindPoses = null;
 
-        long[] jointIds = skeleton.joints.GetValues();
-        bones = new Transform[jointIds.Length];
+        var joints = skeleton.joints;
+        bones = new Transform[joints.Count];
         Dictionary<long, int> jointId2Idx = new Dictionary<long, int>();
-        for (int jointIndex = 0; jointIndex < jointIds.Length; jointIndex++) 
+        for (int jointIndex = 0; jointIndex < joints.Count; jointIndex++) 
         {
-            long jointId = jointIds[jointIndex];    
-            Interdigital.Arf.Node jointNode = arf.components.nodes[jointId];
+            var jointNode = joints[jointIndex].node;
+            long jointId = jointNode.id;
             //Debug.Log(String.Format("{0} {1}", jointId, jointNode.name));
             Transform bone = bone = new GameObject(jointNode.name).transform;
             bone.SetParent(transform);
@@ -299,10 +299,10 @@ public class ArfParser
             bones[jointIndex] = bone;
             jointId2Idx.Add(jointId, jointIndex);
         }
-        for (int jointIndex = 0; jointIndex < jointIds.Length; jointIndex++) 
+        for (int jointIndex = 0; jointIndex < joints.Count; jointIndex++) 
         {
-            long jointId = jointIds[jointIndex];    
-            Interdigital.Arf.Node jointNode = arf.components.nodes[jointId];
+            var jointNode = joints[jointIndex].node;
+            long jointId = jointNode.id;
             if (jointNode.HasChildren()) {
                 foreach (long childId in jointNode.children.GetValues()) {
                     int childIndex = jointId2Idx[childId];
@@ -315,8 +315,8 @@ public class ArfParser
         {
             DataTree ibm = skeleton.inverseBindMatrix.GetTensor();
             float[] ibmData = ibm.GetValues<float>();
-            bindPoses = new Matrix4x4[jointIds.Length];
-            for (int jointIndex = 0; jointIndex < jointIds.Length; jointIndex++) {
+            bindPoses = new Matrix4x4[joints.Count];
+            for (int jointIndex = 0; jointIndex < joints.Count; jointIndex++) {
                 Matrix4x4 matrix = UnityConvert.ToMatrix4x4(ibmData, jointIndex * 16);
                 if (transposeInverseBindMatrices) {
                     matrix = matrix.transpose;

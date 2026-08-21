@@ -30,11 +30,11 @@ public class ArfAvatar : MonoBehaviour
 
     public void Init(Arf arf)
     {
-        Metadata metadata = arf.metadata;        
-        name = metadata.name;
-        id = metadata.id;
-        age = metadata.age;
-        gender = metadata.gender;
+        Identity identity = arf.identity;        
+        name = identity.name;
+        id = identity.id;
+        age = identity.age;
+        gender = identity.gender;
 
         Preamble preamble = arf.preamble;
         SupportedAnimations supportedAnimations = preamble.supportedAnimations;
