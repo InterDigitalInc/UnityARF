@@ -35,23 +35,32 @@ Creation Commons Attribution-NonCommercial 4.0 International
 
 # Third-Party licenses
 
-- arfcodec 0.9.1: MPEG Avatar Representation Format Library
+- arfcodec 1.0.0: MPEG Avatar Representation Format Library
   - CC BY-NC 4.0, https://creativecommons.org/licenses/by-nc/4.0/deed.en
+  - https://git.mpeg.expert/MPEG/Systems/SceneDescription/arf/software/arfcodec.git
 
-- zlib 1.3.1:
+- zlib 1.3.1: A Massively spiffy yet delicately unobtrusive compression library
   - zlib Licence, https://zlib.net/zlib_license.html
   - https://zlib.net/zlib-1.3.1.tar.gz
 
-- libpng 1.6.50:
+- bzip2 1.0.8: A freely available, patent-free data compressor
+  - bzip2 Licence, https://sourceware.org/bzip2/
+  - https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
+
+- zstd 1.5.7: A fast lossless compression algorithm
+  - BSD-3 Licence, https://github.com/facebook/zstd/blob/dev/LICENSE
+  - https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
+
+- libzip 1.11.4: A C library for reading, creating, and modifying zip archives
+  - BSD-3 Licence, https://libzip.org/license/
+  - https://libzip.org/download/libzip-1.11.4.tar.gz
+
+- libpng 1.6.50: The free reference library for reading and writing PNGs
   - PNG Reference Library License version 2, https://www.libpng.org/pub/png/src/libpng-LICENSE.txt
   - https://sourceforge.net/projects/libpng/files/libpng16/1.6.50/libpng-1.6.50.tar.gz
 
-- libjpeg-turbo 3.1.1:
+- libjpeg-turbo 3.1.1: A JPEG image codec that uses SIMD instructions
   - IJG or BSD-3 Licence, https://github.com/libjpeg-turbo/libjpeg-turbo/blob/main/LICENSE.md
   - https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.1/libjpeg-turbo-3.1.1.tar.gz
-
-- libzip 1.11.4:
-  - BSD-3 Licence, https://libzip.org/license/
-  - https://libzip.org/download/libzip-1.11.4.tar.gz
 
 
