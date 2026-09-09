@@ -1,7 +1,7 @@
 {
   "name": "com.interdigital.unityarf",
   "displayName": "UnityARF",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "unity": "6000.0",
   "description": "Import MPEG Avatar Representation Format",
   "keywords": [
