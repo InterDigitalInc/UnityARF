@@ -7,11 +7,8 @@ using Interdigital.Arf;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
-using UnityEngine.Playables;
 using UnityEngine.InputSystem;
-using System.Linq;
 
 namespace Interdigital {
 namespace Arf {
@@ -25,10 +22,22 @@ public class AnimateArf : MonoBehaviour
     public string animationFrameworkURN = "urn:blender:avatar:animation:2024";
 
     public int maxQueueSize = 10;
-    private ConcurrentQueue<UnitAnimationSample> queue;
+    public int maxSamplesPerFrame = 10;
+    private ConcurrentQueue<(long LoopIndex, HeaderAnimationSample Header, UnitAnimationSample Sample)> queue;
     private AnimationSampleProducer producer;
     private float timeAccumulator = 0;
-    private float timeScale = 0;
+    private long currentLoopIndex = -1;
+
+    public class Config
+    {
+        public string profile;
+        public float timeScale = 0;
+        public Config(string profile, float timeScale) {
+            this.profile = profile;
+            this.timeScale = timeScale;
+        }
+    }
+    private Dictionary<(AnimationUnitType, long), Config> configs;
 
     private ArfAvatar avatar;
     private AnimationMapper mapper;
@@ -36,16 +45,21 @@ public class AnimateArf : MonoBehaviour
 
     void OnEnable()
     {
-        queue = new ConcurrentQueue<UnitAnimationSample>();
+        queue = new ConcurrentQueue<(long LoopIndex, HeaderAnimationSample Header, UnitAnimationSample Sample)>();
         producer = new AnimationSampleProducer(animationFilePath, queue, maxQueueSize);
         producer.Start();
         timeAccumulator = 0;
+        currentLoopIndex = -1;
+        configs = new Dictionary<(AnimationUnitType, long), Config>();
     }
 
     void OnDisable()
     {
         producer?.Stop();
         producer = null;
+        while (queue != null && queue.TryDequeue(out var item)) {
+            DisposeSample(item.Header, item.Sample);
+        }
     }
 
     void Start()
@@ -64,9 +78,22 @@ public class AnimateArf : MonoBehaviour
             return;
         }
         timeAccumulator += Time.deltaTime;
-        //Debug.Log($"timeAccumulator = {timeAccumulator}");
-        while (queue.TryPeek(out var sample))
-        {           
+        int processedSamples = 0;
+        while (processedSamples < Math.Max(1, maxSamplesPerFrame) && queue.TryPeek(out var item))
+        {
+            var (loopIndex, header, sample) = item;
+            if (!header.IsValid() || !sample.IsValid()) {
+                if (queue.TryDequeue(out var invalidItem)) {
+                    DisposeSample(invalidItem.Header, invalidItem.Sample);
+                    processedSamples++;
+                }
+                continue;
+            }
+            if (loopIndex != currentLoopIndex) {
+                currentLoopIndex = loopIndex;
+                timeAccumulator = 0;
+                configs.Clear();
+            }
             if (Keyboard.current != null &&
                 Keyboard.current.escapeKey.wasPressedThisFrame)
             {
@@ -74,37 +101,94 @@ public class AnimateArf : MonoBehaviour
             }
             if (sample.GetUnitType() == AnimationUnitType.AAU_CONFIG) 
             {
-                var config = sample.ToConfigSample();
-                timeScale = config.GetTimescale();
-                queue.TryDequeue(out _);
-                continue;
+                if (!queue.TryDequeue(out var configItem)) {
+                    continue;
+                }
+                processedSamples++;
+                try
+                {
+                    using (var config = configItem.Sample.ToConfigAnimationSample())
+                    {
+                        for (int i = 0; i < config.GetProfileCount(); i++)
+                        {
+                            var profile = config.GetProfile(i);
+                            for (int j = 0; j < config.GetAssociationCount(i); j++)
+                            {
+                                var unitType = config.GetAssociationUnitType(i, j);
+                                var setId = config.GetAssociationSetId(i, j);
+                                var timescale = config.GetAssociationTimescale(i, j);
+                                if (timescale <= 0) {
+                                    Debug.LogError("Invalid time scale");
+                                    continue;
+                                }
+                                configs[(unitType, setId)] = new Config(profile, timescale);
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    DisposeSample(configItem.Header, configItem.Sample);
+                }
             }
-            if (timeScale == 0) {
-                Debug.LogError("No config unit defined a time scale");
-                queue.TryDequeue(out _);
-                break;
-            }
-            float timestamp = sample.GetTimestamp() / timeScale;
-            if (timestamp > timeAccumulator) {
-                break; // change to continue when problems are solved
-            }
-            //Debug.Log($"timeAccumulator: {timeAccumulator}, timestamp: {timestamp}, type: {sample.GetUnitType()}");
-            queue.TryDequeue(out _);
-            if (sample.GetUnitType() == AnimationUnitType.AAU_BLENDSHAPE)
+            else
             { 
-                var blendshape = sample.ToBlendshapeSample(); 
-                //Debug.Log($"Blendshape w9: {blendshape.GetBlendshapeWeight(9)}");
-                mapper.UpdateComponents(components, blendshape);
-                avatar.UpdateGameObjects(convertAxis);
+                var unitType = sample.GetUnitType();
+                float timestamp = header.GetTimestamp();
+                long setId = -1;
+                if (unitType == AnimationUnitType.AAU_BLENDSHAPE)
+                {
+                    using (var blendshape = sample.ToBlendshapeAnimationSample()) {
+                        setId = blendshape.GetSetId();
+                    }
+                }
+                else if (unitType == AnimationUnitType.AAU_JOINT)
+                {
+                    using (var joint = sample.ToJointAnimationSample()) {
+                        setId = joint.GetSetId();
+                    }
+                }
+                else
+                {
+                    if (queue.TryDequeue(out var unsupportedItem)) {
+                        DisposeSample(unsupportedItem.Header, unsupportedItem.Sample);
+                        processedSamples++;
+                    }
+                    continue;
+                }
+
+                if (configs.TryGetValue((unitType, setId), out var config))
+                {
+                    timestamp /= config.timeScale;
+                    if (timestamp > timeAccumulator) {
+                        break; // Too early, keep it for next
+                    }
+                    if (queue.TryDequeue(out var dueItem)) {
+                        processedSamples++;
+                        try {
+                            mapper.UpdateComponents(components, dueItem.Sample);
+                            avatar.UpdateGameObjects(convertAxis);
+                        }
+                        finally {
+                            DisposeSample(dueItem.Header, dueItem.Sample);
+                        }
+                    }
+                }
+                else
+                {
+                    if (queue.TryDequeue(out var unmappedItem)) {
+                        DisposeSample(unmappedItem.Header, unmappedItem.Sample);
+                        processedSamples++;
+                    }
+                }
             }
-            else if (sample.GetUnitType() == AnimationUnitType.AAU_JOINT)
-            { 
-                var joint = sample.ToJointSample(); 
-                mapper.UpdateComponents(components, joint);
-                avatar.UpdateGameObjects(convertAxis);
-            }
-            break;
         }
+    }
+
+    private static void DisposeSample(HeaderAnimationSample header, UnitAnimationSample sample)
+    {
+        sample?.Dispose();
+        header?.Dispose();
     }
 }
 
