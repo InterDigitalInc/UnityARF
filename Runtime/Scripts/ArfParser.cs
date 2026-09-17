@@ -28,6 +28,7 @@ public class ArfParserOptions
     public bool loadSkins = true;
     public bool transposeNodeTransforms = true;
     public bool transposeInverseBindMatrices = true;
+    public bool loadGaussianSplatting = false;
 }
 
 public class ArfParser
@@ -181,7 +182,7 @@ public class ArfParser
 
                 SkinnedMeshRenderer renderer = meshGO.AddComponent<SkinnedMeshRenderer>();
                 try { 
-                    SetMesh(renderer, mesh);                
+                    SetMesh(renderer, mesh, options);
                 }
                 catch(Exception e) {
                     throw new Exception($"Error setting mesh {mesh.id}, lod {options.lodName}, asset {asset.id}: {e.Message}");
@@ -329,7 +330,7 @@ public class ArfParser
         return new UnitySkeleton(bones, bindPoses);
     }
 
-    public void SetMesh(SkinnedMeshRenderer renderer, Interdigital.Arf.Mesh mesh)
+    public void SetMesh(SkinnedMeshRenderer renderer, Interdigital.Arf.Mesh mesh, ArfParserOptions options)
     {
         Data geometry = mesh.data[0];
         Gltf gltf = geometry.GetGltf();
@@ -337,7 +338,7 @@ public class ArfParser
             cache.baseName = $"data{geometry.GetPropertyId():D4}:";
         }
         GltfParser gltfParser = new GltfParser(gltf, cache);
-        gltfParser.SetMesh(renderer, gltfParser.GetFirstMesh());
+        gltfParser.SetMesh(renderer, gltfParser.GetFirstMesh(), options);
         if (cache != null) { 
             cache.baseName = "";
         }

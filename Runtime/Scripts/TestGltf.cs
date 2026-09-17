@@ -20,7 +20,7 @@ public class TestGltf : MonoBehaviour
 
         GltfParser gltfParser = new GltfParser(gltf);
         Scene scene = gltf.scene;
-        gltfParser.SetSkinnedMeshRenderer(transform, scene.nodes[0].GetPropertyIndex());
+        gltfParser.SetSkinnedMeshRenderer(transform, scene.nodes[0].GetPropertyIndex(), new ArfParserOptions());
     }
 
     void Update()

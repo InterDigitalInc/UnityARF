@@ -3,6 +3,7 @@
 // All rights reserved.
 // See LICENSE under the root folder.
 //
+using Interdigital.Arf;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -67,10 +68,10 @@ public class GltfParser
         return null;
     }
 
-    public void SetMesh(SkinnedMeshRenderer renderer, Interdigital.Gltf2.Mesh mesh)
+    public void SetMesh(SkinnedMeshRenderer renderer, Interdigital.Gltf2.Mesh mesh, ArfParserOptions options)
     {
-        if (mesh.primitives.Count > 1) {
-            Debug.LogWarning("glTF meshes with more than one primitive are not supported; only the first one is used");
+        if (mesh.primitives.Count == 0) {
+            Debug.LogWarning("No primitive in mesh");
         }
 
         // Parse primitive
@@ -167,7 +168,6 @@ public class GltfParser
         {
             unityMaterial.color = Color.white;
         }
-
         if (Application.isPlaying) {
             renderer.material = unityMaterial;
         }
@@ -176,6 +176,113 @@ public class GltfParser
         }
 
         renderer.sharedMesh = unityMesh;
+
+
+        // Gaussian Splatting
+        if (!options.loadGaussianSplatting)
+        {
+            if (mesh.primitives.Count != 1) {
+                Debug.LogWarning("meshes with more than one primitive are not supported; only the first one is used");
+                return;
+            }
+        }
+
+        if (mesh.primitives.Count == 1) {
+            return;
+        }
+        primitive = mesh.primitives[1];
+        if (!primitive.HasExtensions() || !primitive.extensions.Has("KHR_gaussian_splatting"))
+        {
+            Debug.LogWarning("If a mesh has two primitives, the second one shall be gaussian splatting");
+            return;
+        }
+        
+        // Position
+        DataTree gsPositions = primitive.GetAttribute("POSITION").GetTensor();
+        long gaussianCount = gsPositions.GetTensorSize(0);
+        Debug.Log($"Found {gaussianCount} Gaussians");
+        Vector3[] unityGsPositions = UnityConvert.ToTranslations(gsPositions);
+
+        // Rotation
+        DataTree gsRotations = primitive.GetAttribute("KHR_gaussian_splatting:ROTATION").GetTensor();
+        if (gaussianCount != gsRotations.GetTensorSize(0)) {
+            throw new SystemException("Invalid Gaussian Splatting rotations");
+        }
+        Quaternion[] unityGsRotations = UnityConvert.ToRotations(gsRotations);
+
+        // Scale
+        DataTree gsScales = primitive.GetAttribute("KHR_gaussian_splatting:SCALE").GetTensor();
+        if (gaussianCount != gsScales.GetTensorSize(0)) {
+            throw new SystemException("Invalid Gaussian Splatting scales");
+        }
+        Vector3[] unityGsScales = UnityConvert.ToScales(gsScales);
+
+        // Opacity
+        DataTree gsOpacities = primitive.GetAttribute("KHR_gaussian_splatting:OPACITY").GetTensor();
+        if (gaussianCount != gsOpacities.GetTensorSize(0)) {
+            throw new SystemException("Invalid Gaussian Splatting opacity");
+        }
+        float[] unityGsOpacities = gsOpacities.GetValues<float>();
+
+        // Spherical Harmonics
+        DataTree gsSh0s = primitive.GetAttribute("KHR_gaussian_splatting:SH_DEGREE_0_COEF_0").GetTensor();
+        if (gaussianCount != gsSh0s.GetTensorSize(0)) {
+            throw new SystemException("Invalid Gaussian Splatting SH 0");
+        }
+        Vector3[] unityGsSh0s = UnityConvert.ToScales(gsSh0s);
+
+
+        // There are also: _ARF_BINDING, _ARF_DELTA_ROTATION, _ARF_LOG_SCALE, COLOR_0 and _GSBASED_REGION
+
+
+        // KHR properties
+        var KHR_gaussian_splatting = primitive.extensions.KHR_gaussian_splatting;
+        string kernel = KHR_gaussian_splatting.kernel;
+        string colorSpace = KHR_gaussian_splatting.colorSpace;
+        string sortingMethod = KHR_gaussian_splatting.sortingMethod;
+        string projection = KHR_gaussian_splatting.projection;
+
+        if (KHR_gaussian_splatting.HasExtensions() && KHR_gaussian_splatting.Has("MPEG_gaussian_splatting_transport"))
+        {
+            var MPEG_gaussian_splatting_transport = KHR_gaussian_splatting.extensions.MPEG_gaussian_splatting_transport;
+            string coordinateMode = MPEG_gaussian_splatting_transport.coordinateMode;
+            string encodingVersion = MPEG_gaussian_splatting_transport.encodingVersion;
+
+            var shEncoding = MPEG_gaussian_splatting_transport.shEncoding;
+            string layout = shEncoding.layout;
+            long maxDegree = shEncoding.maxDegree;
+            bool dcFromColor0 = shEncoding.dcFromColor0;
+
+            var stitching = MPEG_gaussian_splatting_transport.stitching;
+            string mode = stitching.mode;
+            if (stitching.mesh != mesh.GetPropertyIndex()) {
+                throw new SystemException("Only Gaussian Splatting defined in the same mesh is supported");
+            }
+            if (stitching.primitive != 0) {
+                throw new SystemException("Only Gaussian Splatting defined in the second primitive is supported");
+            }
+            bool positionReuse = stitching.positionReuse;
+
+            // Face indices
+            DataTree gsFaces = stitching.faces.GetTensor();
+            if (gaussianCount != gsFaces.GetTensorSize(0)) {
+                throw new SystemException("Invalid Gaussian Splatting faces");
+            }
+            long[] unityGsFaces = gsFaces.GetValues<long>();
+
+            // Barycenters
+            DataTree gsBarycenters = stitching.binding.GetTensor();   // Looks the same as primitive attribute _ARF_BINDING
+            if (gaussianCount != gsBarycenters.GetTensorSize(0)) {
+                throw new SystemException("Invalid Gaussian Splatting binding");
+            }
+            Vector3[] unityGsBarycenters = UnityConvert.ToScales(gsBarycenters);
+        }
+
+        // Primitive extras
+        var extras = primitive.extras;
+        string meshBoundScale = extras["meshBoundScale"].GetString();
+        long arfMeshId = extras["arfMeshId"].GetInteger(); // We should call this method from this mesh and skin
+        long arfSkinId = extras["arfMeshId"].GetInteger();
     }
 
     public void SetPrimitiveSkinWeights(UnityEngine.Mesh unityMesh, Interdigital.Gltf2.Primitive primitive)
@@ -208,7 +315,7 @@ public class GltfParser
         unityMesh.boneWeights = boneWeights;
     }
 
-    public void SetSkinnedMeshRenderer(Transform transform, long nodeId, bool withSkin = true)
+    public void SetSkinnedMeshRenderer(Transform transform, long nodeId, ArfParserOptions options, bool withSkin = true)
     {
         Node node = gltf.nodes[nodeId];
         if (!node.HasMesh()) {
@@ -219,7 +326,7 @@ public class GltfParser
         GameObject meshGO = new GameObject(mesh.name ?? "mesh");
         meshGO.transform.SetParent(transform);
         SkinnedMeshRenderer renderer = meshGO.AddComponent<SkinnedMeshRenderer>();
-        SetMesh(renderer, mesh);
+        SetMesh(renderer, mesh, options);
 
         if (withSkin && node.HasSkin()) { 
             SetPrimitiveSkinWeights(renderer.sharedMesh, mesh.primitives[0]);

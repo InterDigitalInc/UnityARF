@@ -4,6 +4,8 @@
 // See LICENSE under the root folder.
 //
 using System;
+using System.ComponentModel;
+using System.Data;
 using UnityEngine;
 
 namespace Interdigital { 
@@ -105,6 +107,38 @@ public class UnityConvert
         );
     }
 
+    public static Vector3 ToTranslation(double[] data, int offset = 0)
+    {
+        return new Vector3(
+            -(float)data[offset + 0],
+            (float)data[offset + 1],
+            (float)data[offset + 2]
+        );
+    }
+
+    public static Vector3[] ToTranslations(float[] data, int offset = 0)
+    {
+        if ((data.Length % 3) != 0) {
+            throw new ArgumentException("Invalid data length");
+        }
+        int count = data.Length / 3;
+        Vector3[] translations = new Vector3[count];
+        for (long index = 0; index < count; index++) {
+            translations[index] = new Vector3(
+                -data[3*index + offset + 0],
+                data[3*index + offset + 1],
+                data[3*index + offset + 2]
+            );
+        }
+        return translations;
+    }
+
+    public static Vector3[] ToTranslations(DataTree data, int offset = 0)
+    {
+        return UnityConvert.ToTranslations(data.GetValues<float>(), offset);
+    }
+
+
     public static Vector3 ToScale(double[] data, int offset = 0)
     {
         return new Vector3(
@@ -114,13 +148,26 @@ public class UnityConvert
         );
     }
 
-    public static Vector3 ToTranslation(double[] data, int offset = 0)
+    public static Vector3[] ToScales(float[] data, int offset = 0)
     {
-        return new Vector3(
-            -(float)data[offset + 0],
-            (float)data[offset + 1],
-            (float)data[offset + 2]
-        );
+        if ((data.Length % 3) != 0) {
+            throw new ArgumentException("Invalid data length");
+        }
+        int count = data.Length / 3;
+        Vector3[] scales = new Vector3[count];
+        for (long index = 0; index < count; index++) {
+            scales[index] = new Vector3(
+                data[3*index + offset + 0],
+                data[3*index + offset + 1],
+                data[3*index + offset + 2]
+            );
+        }
+        return scales;
+    }
+
+    public static Vector3[] ToScales(DataTree data, int offset = 0)
+    {
+        return UnityConvert.ToScales(data.GetValues<float>(), offset);
     }
 
     public static Quaternion ToRotation(double[] data, int offset = 0)
@@ -131,6 +178,29 @@ public class UnityConvert
             -(float)data[offset + 2],
             (float)data[offset + 3]
         );
+    }
+
+    public static Quaternion[] ToRotations(float[] data, int offset = 0)
+    {
+        if ((data.Length % 4) != 0) {
+            throw new ArgumentException("Invalid data length");
+        }
+        int count = data.Length / 4;
+        Quaternion[] translations = new Quaternion[count];
+        for (long index = 0; index < count; index++) {
+            translations[index] = new Quaternion(
+                data[4*index + offset + 0],
+                -data[4*index + offset + 1],
+                -data[4*index + offset + 2],
+                data[4*index + offset + 3]
+            );
+        }
+        return translations;
+    }
+
+    public static Quaternion[] ToRotations(DataTree data, int offset = 0)
+    {
+        return UnityConvert.ToRotations(data.GetValues<float>(), offset);
     }
 
     public static void SetLocalTransform(Transform transform, float[] data, int offset = 0)
