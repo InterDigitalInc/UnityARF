@@ -2,7 +2,8 @@
     "name": "UnityARF",
     "rootNamespace": "",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Gsplat"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
