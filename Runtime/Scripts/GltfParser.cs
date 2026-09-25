@@ -293,13 +293,14 @@ public class GltfParser
             }
 
             model.SetStitching(
-                stitching.faces.GetTensor(),
-                stitching.weights.GetTensor(),
+                stitching.faces.GetTensor(), 
+                stitching.weights.GetTensor(), 
                 stitching.displacement.GetTensor()
             );
 
-            // Utilities to link mesh to GS 
             var bakedMesh = renderer.gameObject.AddComponent<BakedMesh>();
+            var updater = renderer.gameObject.AddComponent<GaussianStitchingUpdater>();
+            updater.Initialize(model, bakedMesh, splats, indexValues);
         }
     }
 

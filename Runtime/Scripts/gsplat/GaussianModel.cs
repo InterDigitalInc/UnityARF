@@ -25,7 +25,7 @@ namespace Interdigital.Arf
         [field: NonSerialized] public DataTree[] shs { get; private set; }
         [field: NonSerialized] public string colorSpace { get; set; } = "srgb_rec709_display";
 
-        [field: NonSerialized] public bool isStitched { get; set; } = false;
+        [field: NonSerialized] public bool isStitched { get; private set; } = false;
         [field: NonSerialized] public DataTree faces { get; private set; }
         [field: NonSerialized] public DataTree baryCenters { get; private set; }
         [field: NonSerialized] public DataTree displacements { get; private set; }
@@ -75,12 +75,16 @@ namespace Interdigital.Arf
             DataTree displacements
         )
         {
+            if (!initialized || disposed)
+                throw new InvalidOperationException("The Gaussian model is not available.");
+            if (isStitched)
+                throw new InvalidOperationException("Stitching has already been set.");
             if (ReferenceEquals(faces, null) || !faces.IsValid() || !faces.IsTensor())
-                throw new ArgumentException("A valid tensor is required.", "faces");
+                throw new ArgumentException("A valid tensor is required.", nameof(faces));
             if (faces.GetScalarType() != ScalarType.UInteger32)
-                throw new ArgumentException("The tensor must contain 32-bit unsigned ints.", "faces");
-            if (faces.GetValueCount() != 3 * count)
-                throw new ArgumentException("The tensor count must match the position count.", "faces");
+                throw new ArgumentException("The tensor must contain 32-bit unsigned ints.", nameof(faces));
+            if (faces.GetTensorDim() != 1 || faces.GetTensorSize(0) != count)
+                throw new ArgumentException("The face tensor must have shape [gaussianCount].", nameof(faces));
 
             ValidateTensor(baryCenters, nameof(baryCenters), count, 3);
             ValidateTensor(displacements, nameof(displacements), count, 3);
