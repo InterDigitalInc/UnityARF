@@ -116,6 +116,7 @@ public class GltfParser
         UnityEngine.Material unityMaterial = new UnityEngine.Material(shader);
 
         // Texture
+        bool foundTexture = false;
         if (primitive.HasAttribute("TEXCOORD_0"))
         { 
             // Uvs
@@ -133,38 +134,46 @@ public class GltfParser
 
             // Texture
             Interdigital.Gltf2.Material material = primitive.material;
-            TextureInfo baseColorTexture = material.pbrMetallicRoughness.baseColorTexture;
-            Interdigital.Gltf2.Texture texture = baseColorTexture.index;
-            DataTree image = texture.source.GetImage();
-            DataTree pixels = image["pixels"];
-            int width = (int)pixels.GetTensorSize(0);
-            int height = (int)pixels.GetTensorSize(1);
-            TextureFormat textureFormat;
-            int pixelFormat = (int)image["pixelFormat"].GetInteger();
-            if (pixelFormat == (int)PixelFormat.RGB) {
-                textureFormat = TextureFormat.RGB24;
-            }
-            else if (pixelFormat == (int)PixelFormat.RGBA) {
-                textureFormat = TextureFormat.RGBA32;
-            }
-            else {  
-                throw new Exception($"Invalid or unsupported pixel format {pixelFormat}");
-            }
+            if (material.HasPbrMetallicRoughness())
+            { 
+                var pbrMetallicRoughness = material.pbrMetallicRoughness;
+                if (pbrMetallicRoughness.HasBaseColorTexture()) 
+                { 
+                    TextureInfo baseColorTexture = pbrMetallicRoughness.baseColorTexture;
+                    Interdigital.Gltf2.Texture texture = baseColorTexture.index;
+                    DataTree image = texture.source.GetImage();
+                    DataTree pixels = image["pixels"];
+                    int width = (int)pixels.GetTensorSize(0);
+                    int height = (int)pixels.GetTensorSize(1);
+                    TextureFormat textureFormat;
+                    int pixelFormat = (int)image["pixelFormat"].GetInteger();
+                    if (pixelFormat == (int)PixelFormat.RGB) {
+                        textureFormat = TextureFormat.RGB24;
+                    }
+                    else if (pixelFormat == (int)PixelFormat.RGBA) {
+                        textureFormat = TextureFormat.RGBA32;
+                    }
+                    else {  
+                        throw new Exception($"Invalid or unsupported pixel format {pixelFormat}");
+                    }
 
-            Texture2D unityTexture = new Texture2D(width, height, textureFormat, false);
-            if (cache != null) {
-                cache.AddTexture($"{texture.GetPropertyIndex():D4}", unityTexture);
-            }
-            byte[] bytes = pixels.GetValues<byte>();
-            unityTexture.LoadRawTextureData(bytes);
-            unityTexture.Apply();
-            unityMaterial.mainTexture = unityTexture;
+                    Texture2D unityTexture = new Texture2D(width, height, textureFormat, false);
+                    if (cache != null) {
+                        cache.AddTexture($"{texture.GetPropertyIndex():D4}", unityTexture);
+                    }
+                    byte[] bytes = pixels.GetValues<byte>();
+                    unityTexture.LoadRawTextureData(bytes);
+                    unityTexture.Apply();
+                    unityMaterial.mainTexture = unityTexture;
 
-            if (cache != null) {
-                cache.AddMaterial($"{material.GetPropertyIndex():D4}", unityMaterial);
+                    if (cache != null) {
+                        cache.AddMaterial($"{material.GetPropertyIndex():D4}", unityMaterial);
+                    }
+                    foundTexture = true;
+                }
             }
         }
-        else
+        if (!foundTexture)
         {
             unityMaterial.color = Color.white;
         }
@@ -279,10 +288,10 @@ public class GltfParser
         }
 
         // Primitive extras
-        var extras = primitive.extras;
+        /*var extras = primitive.extras;
         string meshBoundScale = extras["meshBoundScale"].GetString();
         long arfMeshId = extras["arfMeshId"].GetInteger(); // We should call this method from this mesh and skin
-        long arfSkinId = extras["arfMeshId"].GetInteger();
+        long arfSkinId = extras["arfMeshId"].GetInteger();*/
     }
 
     public void SetPrimitiveSkinWeights(UnityEngine.Mesh unityMesh, Interdigital.Gltf2.Primitive primitive)
