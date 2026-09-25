@@ -72,10 +72,15 @@ public class GltfParser
     {
         if (mesh.primitives.Count == 0) {
             Debug.LogWarning("No primitive in mesh");
+            return;
         }
 
         // Parse primitive
         Primitive primitive = mesh.primitives[0];
+        if (primitive.mode != PrimitiveMode.TRIANGLES) {
+            Debug.LogWarning("Only TRIANGLES primitives are supported");
+            return;
+        }
         UnityEngine.Mesh unityMesh = new UnityEngine.Mesh();
         if (cache != null) {
             cache.AddMesh($"{mesh.GetPropertyIndex():D4}", unityMesh);
@@ -200,56 +205,62 @@ public class GltfParser
             return;
         }
         primitive = mesh.primitives[1];
+        if (primitive.mode != PrimitiveMode.POINTS) {
+            Debug.LogWarning("Only POINTS primitives are supported for Gaussians Splatting");
+            return;
+        }
         if (!primitive.HasExtensions() || !primitive.extensions.Has("KHR_gaussian_splatting"))
         {
             Debug.LogWarning("If a mesh has two primitives, the second one shall be gaussian splatting");
             return;
         }
-        
-        // Position
-        DataTree gsPositions = primitive.GetAttribute("POSITION").GetTensor();
-        long gaussianCount = gsPositions.GetTensorSize(0);
-        Debug.Log($"Found {gaussianCount} Gaussians");
-        Vector3[] unityGsPositions = UnityConvert.ToTranslations(gsPositions);
-
-        // Rotation
-        DataTree gsRotations = primitive.GetAttribute("KHR_gaussian_splatting:ROTATION").GetTensor();
-        if (gaussianCount != gsRotations.GetTensorSize(0)) {
-            throw new SystemException("Invalid Gaussian Splatting rotations");
-        }
-        Quaternion[] unityGsRotations = UnityConvert.ToRotations(gsRotations);
-
-        // Scale
-        DataTree gsScales = primitive.GetAttribute("KHR_gaussian_splatting:SCALE").GetTensor();
-        if (gaussianCount != gsScales.GetTensorSize(0)) {
-            throw new SystemException("Invalid Gaussian Splatting scales");
-        }
-        Vector3[] unityGsScales = UnityConvert.ToScales(gsScales);
-
-        // Opacity
-        DataTree gsOpacities = primitive.GetAttribute("KHR_gaussian_splatting:OPACITY").GetTensor();
-        if (gaussianCount != gsOpacities.GetTensorSize(0)) {
-            throw new SystemException("Invalid Gaussian Splatting opacity");
-        }
-        float[] unityGsOpacities = gsOpacities.GetValues<float>();
-
-        // Spherical Harmonics
-        DataTree gsSh0s = primitive.GetAttribute("KHR_gaussian_splatting:SH_DEGREE_0_COEF_0").GetTensor();
-        if (gaussianCount != gsSh0s.GetTensorSize(0)) {
-            throw new SystemException("Invalid Gaussian Splatting SH 0");
-        }
-        Vector3[] unityGsSh0s = UnityConvert.ToScales(gsSh0s);
-
-
-        // There are also: _ARF_BINDING, _ARF_DELTA_ROTATION, _ARF_LOG_SCALE, COLOR_0 and _GSBASED_REGION
-
-
-        // KHR properties
         var KHR_gaussian_splatting = primitive.extensions.KHR_gaussian_splatting;
         string kernel = KHR_gaussian_splatting.kernel;
-        string colorSpace = KHR_gaussian_splatting.colorSpace;
-        string sortingMethod = KHR_gaussian_splatting.sortingMethod;
-        string projection = KHR_gaussian_splatting.projection;
+        if (kernel != "ellipse") {
+            Debug.LogWarning($"Unsupported Gaussian Splatting kernel {kernel}");
+            return;
+        }
+
+        // Static model
+        DataTree gsPositions = null;
+        DataTree gsRotations = null;
+        DataTree gsScales = null;
+        DataTree gsOpacities = null;
+        DataTree[] gsShs = null;
+        GaussianModel model = null;
+        long gaussianCount;
+        try
+        {
+            gsPositions = primitive.GetAttribute("POSITION").GetTensor();
+            gaussianCount = gsPositions.GetTensorSize(0);
+            Debug.Log($"Found {gaussianCount} Gaussians");
+            gsRotations = primitive.GetAttribute("KHR_gaussian_splatting:ROTATION").GetTensor();
+            gsScales = primitive.GetAttribute("KHR_gaussian_splatting:SCALE").GetTensor();
+            gsOpacities = primitive.GetAttribute("KHR_gaussian_splatting:OPACITY").GetTensor();
+            gsShs = LoadGaussianSphericalHarmonics(primitive, gaussianCount);
+
+            model = renderer.gameObject.AddComponent<GaussianModel>();
+            model.Initialize(gsPositions, gsRotations, gsScales, gsOpacities, gsShs);
+        }
+        catch
+        {
+            if (model != null)
+            {
+                if (Application.isPlaying)
+                    UnityEngine.Object.Destroy(model);
+                else
+                    UnityEngine.Object.DestroyImmediate(model);
+            }
+            if (!ReferenceEquals(gsPositions, null)) gsPositions.Dispose();
+            if (!ReferenceEquals(gsRotations, null)) gsRotations.Dispose();
+            if (!ReferenceEquals(gsScales, null)) gsScales.Dispose();
+            if (!ReferenceEquals(gsOpacities, null)) gsOpacities.Dispose();
+            if (gsShs != null)
+                foreach (DataTree sh in gsShs) sh.Dispose();
+            throw;
+        }
+        model.colorSpace = KHR_gaussian_splatting.colorSpace;
+
 
         if (KHR_gaussian_splatting.HasExtensions() && KHR_gaussian_splatting.Has("MPEG_gaussian_splatting_transport"))
         {
@@ -292,6 +303,67 @@ public class GltfParser
         string meshBoundScale = extras["meshBoundScale"].GetString();
         long arfMeshId = extras["arfMeshId"].GetInteger(); // We should call this method from this mesh and skin
         long arfSkinId = extras["arfMeshId"].GetInteger();*/
+    }
+
+    private static DataTree[] LoadGaussianSphericalHarmonics(Primitive primitive, long gaussianCount)
+    {
+        const int maxDegree = 3;
+        var harmonics = new List<DataTree>();
+        try
+        {
+            for (int degree = 0; degree <= maxDegree; degree++)
+            {
+                string firstAttribute = $"KHR_gaussian_splatting:SH_DEGREE_{degree}_COEF_0";
+                if (!primitive.HasAttribute(firstAttribute))
+                    break;
+
+                int coefficientCount = 2 * degree + 1;
+                var values = new float[checked((int)gaussianCount), coefficientCount, 3];
+                for (int coefficient = 0; coefficient < coefficientCount; coefficient++)
+                {
+                    string attribute = $"KHR_gaussian_splatting:SH_DEGREE_{degree}_COEF_{coefficient}";
+                    if (!primitive.HasAttribute(attribute))
+                        throw new SystemException($"Missing Gaussian Splatting coefficient {attribute}");
+
+                    DataTree part = primitive.GetAttribute(attribute).GetTensor();
+                    try
+                    {
+                        ValidateGaussianShCoefficient(part, gaussianCount, attribute);
+                        float[] rgb = part.GetValues<float>();
+                        for (int gaussian = 0; gaussian < values.GetLength(0); gaussian++)
+                        {
+                            int offset = 3 * gaussian;
+                            values[gaussian, coefficient, 0] = rgb[offset];
+                            values[gaussian, coefficient, 1] = rgb[offset + 1];
+                            values[gaussian, coefficient, 2] = rgb[offset + 2];
+                        }
+                    }
+                    finally
+                    {
+                        part.Dispose();
+                    }
+                }
+                harmonics.Add(DataTree.CreateTensor(values));
+            }
+
+            if (harmonics.Count == 0)
+                throw new SystemException("Gaussian Splatting degree-zero SH is missing");
+            return harmonics.ToArray();
+        }
+        catch
+        {
+            foreach (DataTree tensor in harmonics)
+                tensor.Dispose();
+            throw;
+        }
+    }
+
+    private static void ValidateGaussianShCoefficient(DataTree tensor, long gaussianCount, string attribute)
+    {
+        if (!tensor.IsTensor() || tensor.GetScalarType() != ScalarType.Float ||
+            tensor.GetTensorDim() != 2 || tensor.GetTensorSize(0) != gaussianCount ||
+            tensor.GetTensorSize(1) != 3)
+            throw new SystemException($"Invalid Gaussian Splatting coefficient {attribute}: expected [{gaussianCount}, 3] float tensor");
     }
 
     public void SetPrimitiveSkinWeights(UnityEngine.Mesh unityMesh, Interdigital.Gltf2.Primitive primitive)
