@@ -3,6 +3,7 @@
 // All rights reserved.
 // See LICENSE under the root folder.
 //
+using Gsplat;
 using Interdigital.Arf;
 using System;
 using System.Collections;
@@ -261,12 +262,22 @@ public class GltfParser
         }
         model.colorSpace = KHR_gaussian_splatting.colorSpace;
 
+        GsplatDecodedData data = model.ToGsplatDecodedData();
+        var asset = ScriptableObject.CreateInstance<GsplatAssetUncompressed>();
+        asset.LoadFromDecoded(data);
 
-        if (KHR_gaussian_splatting.HasExtensions() && KHR_gaussian_splatting.Has("MPEG_gaussian_splatting_transport"))
+        var splats = renderer.gameObject.AddComponent<GsplatRenderer>();
+        splats.GsplatAsset = asset;
+        splats.SHDegree = model.shs.Length - 1;
+        splats.GammaToLinear = model.colorSpace != "lin_rec709_display";
+
+        // No more need the mesh rendering
+        renderer.enabled = false;
+
+        // Stitching
+        if (KHR_gaussian_splatting.HasExtensions() && KHR_gaussian_splatting.extensions.Has("MPEG_gaussian_splatting_transport"))
         {
             var MPEG_gaussian_splatting_transport = KHR_gaussian_splatting.extensions.MPEG_gaussian_splatting_transport;
-            string coordinateMode = MPEG_gaussian_splatting_transport.coordinateMode;
-            string encodingVersion = MPEG_gaussian_splatting_transport.encodingVersion;
 
             var shEncoding = MPEG_gaussian_splatting_transport.shEncoding;
             string layout = shEncoding.layout;
@@ -274,35 +285,22 @@ public class GltfParser
             bool dcFromColor0 = shEncoding.dcFromColor0;
 
             var stitching = MPEG_gaussian_splatting_transport.stitching;
-            string mode = stitching.mode;
             if (stitching.mesh != mesh.GetPropertyIndex()) {
                 throw new SystemException("Only Gaussian Splatting defined in the same mesh is supported");
             }
             if (stitching.primitive != 0) {
                 throw new SystemException("Only Gaussian Splatting defined in the second primitive is supported");
             }
-            bool positionReuse = stitching.positionReuse;
 
-            // Face indices
-            DataTree gsFaces = stitching.faces.GetTensor();
-            if (gaussianCount != gsFaces.GetTensorSize(0)) {
-                throw new SystemException("Invalid Gaussian Splatting faces");
-            }
-            long[] unityGsFaces = gsFaces.GetValues<long>();
+            model.SetStitching(
+                stitching.faces.GetTensor(),
+                stitching.weights.GetTensor(),
+                stitching.displacement.GetTensor()
+            );
 
-            // Barycenters
-            DataTree gsBarycenters = stitching.binding.GetTensor();   // Looks the same as primitive attribute _ARF_BINDING
-            if (gaussianCount != gsBarycenters.GetTensorSize(0)) {
-                throw new SystemException("Invalid Gaussian Splatting binding");
-            }
-            Vector3[] unityGsBarycenters = UnityConvert.ToScales(gsBarycenters);
+            // Utilities to link mesh to GS 
+            var bakedMesh = renderer.gameObject.AddComponent<BakedMesh>();
         }
-
-        // Primitive extras
-        /*var extras = primitive.extras;
-        string meshBoundScale = extras["meshBoundScale"].GetString();
-        long arfMeshId = extras["arfMeshId"].GetInteger(); // We should call this method from this mesh and skin
-        long arfSkinId = extras["arfMeshId"].GetInteger();*/
     }
 
     private static DataTree[] LoadGaussianSphericalHarmonics(Primitive primitive, long gaussianCount)
