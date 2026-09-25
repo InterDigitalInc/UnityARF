@@ -252,6 +252,9 @@ public class ArfParser
             }
         }
 
+        if (options.loadGaussianSplatting && avatar.GetComponentInChildren<GaussianModel>(true) != null)
+            avatar.AddComponent<MergedGaussianRenderer>().Initialize();
+
         return avatar;
     }
 

@@ -19,6 +19,7 @@ namespace Interdigital.Arf
         public UnityEngine.Mesh Snapshot => snapshot;
         public IReadOnlyList<Vector3> Vertices => vertices;
         public bool HasSnapshot { get; private set; }
+        public bool AutoBake { get; set; } = true;
 
         public event Action<BakedMesh> Baked;
 
@@ -32,7 +33,8 @@ namespace Interdigital.Arf
 
         private void LateUpdate()
         {
-            Bake();
+            if (AutoBake)
+                Bake();
         }
 
         public void Bake()
@@ -43,7 +45,8 @@ namespace Interdigital.Arf
                 return;
             }
 
-            source.BakeMesh(snapshot, true);
+            // Positions stay in mesh-local space; the merged renderer applies the avatar transform.
+            source.BakeMesh(snapshot, false);
             snapshot.GetVertices(vertices);
             HasSnapshot = true;
             Baked?.Invoke(this);

@@ -3,7 +3,6 @@
 // All rights reserved.
 // See LICENSE under the root folder.
 //
-using Gsplat;
 using Interdigital.Arf;
 using System;
 using System.Collections;
@@ -262,16 +261,7 @@ public class GltfParser
         }
         model.colorSpace = KHR_gaussian_splatting.colorSpace;
 
-        GsplatDecodedData data = model.ToGsplatDecodedData();
-        var asset = ScriptableObject.CreateInstance<GsplatAssetUncompressed>();
-        asset.LoadFromDecoded(data);
-
-        var splats = renderer.gameObject.AddComponent<GsplatRenderer>();
-        splats.GsplatAsset = asset;
-        splats.SHDegree = model.shs.Length - 1;
-        splats.GammaToLinear = model.colorSpace != "lin_rec709_display";
-
-        // No more need the mesh rendering
+        // The avatar-level renderer combines every Gaussian model after meshes and skins load.
         renderer.enabled = false;
 
         // Stitching
@@ -300,7 +290,7 @@ public class GltfParser
 
             var bakedMesh = renderer.gameObject.AddComponent<BakedMesh>();
             var updater = renderer.gameObject.AddComponent<GaussianStitchingUpdater>();
-            updater.Initialize(model, bakedMesh, splats, indexValues);
+            updater.Initialize(model, bakedMesh, indexValues);
         }
     }
 
@@ -504,6 +494,10 @@ public class GltfParser
         //UnityConvert.saveVector3Ds("C:\\temp\\unity\\vertices-gltf.txt", renderer.sharedMesh.vertices);
         //UnityConvert.saveBoneWeights("C:\\temp\\unity\\boneWeights-gltf.txt", renderer.sharedMesh.boneWeights);
         //UnityConvert.saveMatrix4x4s("C:\\temp\\unity\\ibm-gltf.txt", renderer.sharedMesh.bindposes);
+
+        // Standalone glTF loading has no ARF avatar to create the shared renderer.
+        if (meshGO.GetComponent<GaussianModel>() != null)
+            meshGO.AddComponent<MergedGaussianRenderer>().Initialize();
 
     }
 

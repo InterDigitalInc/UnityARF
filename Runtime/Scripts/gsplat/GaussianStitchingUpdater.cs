@@ -4,29 +4,21 @@
 // See LICENSE under the root folder.
 //
 using System;
-using Gsplat;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
-using UnityEngine.Rendering;
 
 namespace Interdigital.Arf
 {
+    // Keeps the face mapping on the source mesh. The avatar-level renderer owns GPU uploads.
     [RequireComponent(typeof(BakedMesh))]
     public sealed class GaussianStitchingUpdater : MonoBehaviour
     {
-        private BakedMesh bakedMesh;
-        private GsplatRenderer splats;
-        private GsplatAssetUncompressed asset;
         private Vector3Int[] triangleVertices;
         private Vector3[] weights;
         private Vector3[] displacements;
-        private float[] radii;
-        private Vector4[] gpuPositions;
-        private Texture2D stagingTexture;
-        private Vector4[] stagingPixels;
-        private bool warnedTextureUpload;
 
-        public void Initialize(GaussianModel model, BakedMesh bakedMesh, GsplatRenderer splats, uint[] sourceIndices)
+        public int Count => triangleVertices?.Length ?? 0;
+
+        public void Initialize(GaussianModel model, BakedMesh bakedMesh, uint[] sourceIndices)
         {
             if (triangleVertices != null)
                 throw new InvalidOperationException("The stitching updater is already initialized.");
@@ -34,32 +26,24 @@ namespace Interdigital.Arf
                 throw new ArgumentException("A stitched Gaussian model is required.", nameof(model));
             if (bakedMesh == null || bakedMesh.gameObject != gameObject)
                 throw new ArgumentException("The baked mesh must be on this GameObject.", nameof(bakedMesh));
-            if (splats == null || splats.gameObject != gameObject)
-                throw new ArgumentException("The splat renderer must be on this GameObject.", nameof(splats));
             if (sourceIndices == null || sourceIndices.Length % 3 != 0)
                 throw new ArgumentException("Triangle indices are required.", nameof(sourceIndices));
 
-            var uncompressed = splats.GsplatAsset as GsplatAssetUncompressed;
-            if (uncompressed == null)
-                throw new ArgumentException("An uncompressed splat asset is required.", nameof(splats));
-
-            var sourceMesh = GetComponent<SkinnedMeshRenderer>().sharedMesh;
-            if (sourceMesh == null)
-                throw new InvalidOperationException("The skinned mesh has not been assigned.");
+            var source = GetComponent<SkinnedMeshRenderer>();
+            if (source == null || source.sharedMesh == null)
+                throw new InvalidOperationException("The source skinned mesh has not been assigned.");
 
             uint[] faceIds = model.faces.GetValues<uint>();
             float[] bary = model.baryCenters.GetValues<float>();
             float[] offsets = model.displacements.GetValues<float>();
-            int count = faceIds.Length;
-            if (uncompressed.Positions.Length != count || bary.Length != 3 * count ||
-                offsets.Length != 3 * count)
+            int count = checked((int)model.count);
+            if (faceIds.Length != count || bary.Length != 3 * count || offsets.Length != 3 * count)
                 throw new ArgumentException("Stitching data does not match the splat count.", nameof(model));
 
             var indices = new Vector3Int[count];
             var normalizedWeights = new Vector3[count];
             var unityOffsets = new Vector3[count];
-            var splatRadii = new float[count];
-            uint vertexCount = checked((uint)sourceMesh.vertexCount);
+            uint vertexCount = checked((uint)source.sharedMesh.vertexCount);
             uint faceCount = checked((uint)(sourceIndices.Length / 3));
             for (int g = 0; g < count; g++)
             {
@@ -87,123 +71,34 @@ namespace Interdigital.Arf
                     throw new ArgumentException($"Gaussian {g} has an invalid displacement.", nameof(model));
                 // glTF positions and displacements are converted from LUF to Unity RUF.
                 unityOffsets[g] = new Vector3(-offsets[k], offsets[k + 1], offsets[k + 2]);
-
-                Vector3 scale = uncompressed.Scales[g];
-                splatRadii[g] = 3f * Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));
             }
 
-            this.bakedMesh = bakedMesh;
-            this.splats = splats;
-            asset = uncompressed;
             triangleVertices = indices;
             weights = normalizedWeights;
             displacements = unityOffsets;
-            radii = splatRadii;
-            gpuPositions = new Vector4[count];
-            if (isActiveAndEnabled)
-                bakedMesh.Baked += OnBaked;
         }
 
-        private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
-
-        private void OnEnable()
+        public void WritePositions(BakedMesh baked, Vector3[] destination, int offset, Matrix4x4 toRoot)
         {
-            if (bakedMesh != null)
-                bakedMesh.Baked += OnBaked;
-        }
+            if (triangleVertices == null)
+                throw new InvalidOperationException("The stitching updater has not been initialized.");
+            if (baked == null || !baked.HasSnapshot)
+                throw new InvalidOperationException("The source mesh has not been baked.");
+            if (destination == null || offset < 0 || destination.Length - offset < Count)
+                throw new ArgumentException("The destination has insufficient space.", nameof(destination));
 
-        private void OnDisable()
-        {
-            if (bakedMesh != null)
-                bakedMesh.Baked -= OnBaked;
-        }
-
-        private void OnBaked(BakedMesh baked)
-        {
             var vertices = baked.Vertices;
-            Vector3 minimum = new Vector3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity);
-            Vector3 maximum = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
-            for (int g = 0; g < triangleVertices.Length; g++)
+            for (int g = 0; g < Count; g++)
             {
                 Vector3Int triangle = triangleVertices[g];
                 Vector3 w = weights[g];
-                Vector3 position = w.x * vertices[triangle.x] +
-                                   w.y * vertices[triangle.y] +
-                                   w.z * vertices[triangle.z] + displacements[g];
-                asset.Positions[g] = position;
-                gpuPositions[g] = new Vector4(position.x, position.y, position.z, 0f);
-
-                Vector3 extent = Vector3.one * radii[g];
-                minimum = Vector3.Min(minimum, position - extent);
-                maximum = Vector3.Max(maximum, position + extent);
+                Vector3 local = w.x * vertices[triangle.x] +
+                                w.y * vertices[triangle.y] +
+                                w.z * vertices[triangle.z] + displacements[g];
+                destination[offset + g] = toRoot.MultiplyPoint3x4(local);
             }
-
-            Bounds bounds = new Bounds((minimum + maximum) * 0.5f, maximum - minimum);
-            asset.Bounds = bounds;
-
-            var resource = splats.GsplatResource as GsplatResourceUncompressed;
-            if (resource == null || resource.Disposed || resource.UploadedCount < asset.SplatCount)
-                return;
-
-            splats.Bounds = bounds;
-            if (resource.PositionBuffer != null)
-                resource.PositionBuffer.SetData(gpuPositions);
-            else if (resource.PositionTexture != null)
-            {
-                if (!UploadPositionTexture(resource.PositionTexture))
-                    return;
-            }
-            else
-                return;
-
-            splats.ForceRefresh();
         }
 
-        private bool UploadPositionTexture(Texture2D destination)
-        {
-            if ((SystemInfo.copyTextureSupport & CopyTextureSupport.Basic) == 0)
-            {
-                if (!warnedTextureUpload)
-                {
-                    Debug.LogWarning("This graphics backend cannot copy updated splat positions into a texture.", this);
-                    warnedTextureUpload = true;
-                }
-                return false;
-            }
-
-            if (stagingTexture == null || stagingTexture.width != destination.width ||
-                stagingTexture.height != destination.height)
-            {
-                ReleaseStagingTexture();
-                stagingTexture = new Texture2D(destination.width, destination.height,
-                    destination.graphicsFormat, TextureCreationFlags.None);
-                stagingPixels = new Vector4[checked(destination.width * destination.height)];
-            }
-
-            Array.Copy(gpuPositions, stagingPixels, gpuPositions.Length);
-            stagingTexture.SetPixelData(stagingPixels, 0);
-            stagingTexture.Apply(false, false);
-            Graphics.CopyTexture(stagingTexture, destination);
-            return true;
-        }
-
-        private void ReleaseStagingTexture()
-        {
-            if (stagingTexture == null)
-                return;
-            if (Application.isPlaying)
-                Destroy(stagingTexture);
-            else
-                DestroyImmediate(stagingTexture);
-            stagingTexture = null;
-            stagingPixels = null;
-        }
-
-        private void OnDestroy()
-        {
-            if (bakedMesh != null)
-                bakedMesh.Baked -= OnBaked;
-            ReleaseStagingTexture();
-        }
+        private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
     }
 }
