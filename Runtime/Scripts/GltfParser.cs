@@ -200,10 +200,16 @@ public class GltfParser
                 return;
             }
         }
-
         if (mesh.primitives.Count == 1) {
             return;
         }
+
+        var type = Type.GetType("Interdigital.Arf.MergedGaussianRenderer, UnityARF.UnitySplats");
+        if (type == null) {
+            Debug.LogWarning("Gaussian Splatting content is ignored because UnitySplats is not installed");
+            return;
+        }
+
         primitive = mesh.primitives[1];
         if (primitive.mode != PrimitiveMode.POINTS) {
             Debug.LogWarning("Only POINTS primitives are supported for Gaussians Splatting");
@@ -494,11 +500,6 @@ public class GltfParser
         //UnityConvert.saveVector3Ds("C:\\temp\\unity\\vertices-gltf.txt", renderer.sharedMesh.vertices);
         //UnityConvert.saveBoneWeights("C:\\temp\\unity\\boneWeights-gltf.txt", renderer.sharedMesh.boneWeights);
         //UnityConvert.saveMatrix4x4s("C:\\temp\\unity\\ibm-gltf.txt", renderer.sharedMesh.bindposes);
-
-        // Standalone glTF loading has no ARF avatar to create the shared renderer.
-        if (meshGO.GetComponent<GaussianModel>() != null)
-            meshGO.AddComponent<MergedGaussianRenderer>().Initialize();
-
     }
 
 }

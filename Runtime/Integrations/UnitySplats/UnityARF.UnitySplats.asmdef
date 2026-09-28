@@ -1,0 +1,25 @@
+{
+  "name": "UnityARF.UnitySplats",
+  "rootNamespace": "UnityArf.UnitySplats",
+  "references": [
+    "UnityARF",
+    "Gsplat"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "HAS_UNITY_SPLATS"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.arloopa.unitysplats",
+      "expression": "[1.2.0,2.0.0)",
+      "define": "HAS_UNITY_SPLATS"
+    }
+  ],
+  "noEngineReferences": false
+}

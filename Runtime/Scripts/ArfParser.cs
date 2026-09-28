@@ -253,7 +253,14 @@ public class ArfParser
         }
 
         if (options.loadGaussianSplatting && avatar.GetComponentInChildren<GaussianModel>(true) != null)
-            avatar.AddComponent<MergedGaussianRenderer>().Initialize();
+        {
+            var type = Type.GetType("Interdigital.Arf.MergedGaussianRenderer, UnityARF.UnitySplats");
+            if (type == null) {
+                throw new Exception("UnitySplats package is not installed");
+            }
+            var renderer = avatar.AddComponent(type);
+            type.GetMethod("Initialize")?.Invoke(renderer, null);
+        }
 
         return avatar;
     }

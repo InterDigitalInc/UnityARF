@@ -19,6 +19,13 @@ This version respects the standard defined during MPEG meeting 155.
    ```
 5. Click <kbd>Add</kbd>.
 
+# Gaussian Splatting (Optional)
+
+To enable Gaussian Splatting install the following packages:
+
+1. https://github.com/netpyoung/unity.webp.git?path=unity_project/Assets/unity.webp#0.3.22
+2. https://github.com/arloopa/UnitySplats.git#v1.2.0
+
 # Supported Platforms
 
 * Windows 11 / x86_64
@@ -37,7 +44,7 @@ Creation Commons Attribution-NonCommercial 4.0 International
 
 - arfcodec 1.1.0: MPEG Avatar Representation Format Library
   - CC BY-NC 4.0, https://creativecommons.org/licenses/by-nc/4.0/deed.en
-  - https://git.mpeg.expert/MPEG/Systems/SceneDescription/arf/software/arfcodec.git
+  - https://git.mpeg.expert/MPEG/Systems/SceneDescription/arf/software/arfcodec.git#1.1.0
 
 - zlib 1.3.1: A Massively spiffy yet delicately unobtrusive compression library
   - zlib Licence, https://zlib.net/zlib_license.html
@@ -63,4 +70,10 @@ Creation Commons Attribution-NonCommercial 4.0 International
   - IJG or BSD-3 Licence, https://github.com/libjpeg-turbo/libjpeg-turbo/blob/main/LICENSE.md
   - https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.1/libjpeg-turbo-3.1.1.tar.gz
 
+- unity.webp 0.3.22:
+  - MIT Licence, https://github.com/netpyoung/unity.webp/blob/master/unity_project/Assets/unity.webp/LICENSE.md
+  - https://github.com/netpyoung/unity.webp.git?path=unity_project/Assets/unity.webp#0.3.22
 
+- UnitySplats 1.2.0: cross-platform Unity 6 package for importing, loading, and rendering 3D Gaussian Splatting (3DGS) 
+  - MIT Licence, https://github.com/arloopa/UnitySplats/blob/main/LICENSE.md 
+  - https://github.com/arloopa/UnitySplats.git#v1.2.0
