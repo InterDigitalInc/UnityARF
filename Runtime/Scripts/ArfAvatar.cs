@@ -38,11 +38,11 @@ public class ArfAvatar : MonoBehaviour
 
         Preamble preamble = arf.preamble;
         SupportedAnimations supportedAnimations = preamble.supportedAnimations;
-        if (supportedAnimations.HasFaceAnimations()) {
-            faceURNs = supportedAnimations.faceAnimations;
+        if (supportedAnimations.HasFace()) {
+            faceURNs = supportedAnimations.face;
         }
-        if (supportedAnimations.HasBodyAnimations()) {
-            bodyURNs = supportedAnimations.bodyAnimations;
+        if (supportedAnimations.HasBody()) {
+            bodyURNs = supportedAnimations.body;
         }
     }
 
@@ -52,11 +52,15 @@ public class ArfAvatar : MonoBehaviour
     /// <param name="arf"></param>
     public void InitNative(Arf arf)
     {
+        /*AnimationFramework f = new AnimationFramework("urn", "ANIMATION_FACE");
+        f.AddInput(AnimationValueType.Weight, "eyeLeft", AnimationLocationType.BlendshapeSet, 0);*/
+
+
         Preamble preamble = arf.preamble;
         SupportedAnimations supportedAnimations = preamble.supportedAnimations;
-        if (supportedAnimations.HasFaceAnimations()) 
+        if (supportedAnimations.HasFace()) 
         {
-            foreach (string urn in supportedAnimations.faceAnimations)
+            foreach (string urn in supportedAnimations.face)
             { 
                 try 
                 {
@@ -72,9 +76,9 @@ public class ArfAvatar : MonoBehaviour
                 }
             }
         }
-        if (supportedAnimations.HasBodyAnimations()) 
+        if (supportedAnimations.HasBody()) 
         {
-            foreach (string urn in supportedAnimations.bodyAnimations)
+            foreach (string urn in supportedAnimations.body)
             { 
                 try 
                 {

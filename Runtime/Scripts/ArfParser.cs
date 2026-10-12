@@ -405,13 +405,7 @@ public class ArfParser
         long jointPerVertex = 4;
         long vertexCount = renderer.sharedMesh.vertexCount;
         Data weightsData = skin.weights;
-       (jointIndices, jointWeights) = weightsData.GetColSparseTensor(jointPerVertex, jointPerVertex, normalize: true);
-                     if(weightsData.id == 73) { 
-                     DataTree tensor = weightsData.GetTensor();
-                        UnityConvert.saveTensor("c:\\temp\\imed_head_73_tensor.json", tensor);
-                        UnityConvert.saveTensor("c:\\temp\\imed_head_73_indices.json", jointIndices);
-                        UnityConvert.saveTensor("c:\\temp\\imed_head_73_weights.json", jointWeights);
-                        }
+        (jointIndices, jointWeights) = weightsData.GetColSparseTensor(jointPerVertex, jointPerVertex, normalize: true);
         if (vertexCount != jointIndices.GetTensorSize(0) || jointPerVertex != jointIndices.GetTensorSize(1)) {
             throw new Exception($"Invalid joint indices {vertexCount} != {jointIndices.GetTensorSize(0)} || {jointPerVertex} != {jointIndices.GetTensorSize(1)}");
         }
