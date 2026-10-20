@@ -29,6 +29,8 @@ To enable Gaussian Splatting install the following packages:
 # Supported Platforms
 
 * Windows 11 / x86_64
+* MacOSX 11 / ARM64
+* MacOSX 11 / x86_64
 * Ubuntu 24.04 / x86_64
 * Android 21 / ARMv7
 * Android 21 / ARM64v8
