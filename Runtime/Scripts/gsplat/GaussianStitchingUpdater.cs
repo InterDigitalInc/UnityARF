@@ -4,6 +4,9 @@
 // See LICENSE under the root folder.
 //
 using System;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 
 namespace Interdigital.Arf
@@ -12,15 +15,42 @@ namespace Interdigital.Arf
     [RequireComponent(typeof(BakedMesh))]
     public sealed class GaussianStitchingUpdater : MonoBehaviour
     {
-        private Vector3Int[] triangleVertices;
-        private Vector3[] weights;
-        private Vector3[] displacements;
+        private const int JobBatchSize = 4096;
 
-        public int Count => triangleVertices?.Length ?? 0;
+        private NativeArray<Vector3Int> triangleVertices;
+        private NativeArray<Vector3> weights;
+        private NativeArray<Vector3> displacements;
+
+        public int Count => triangleVertices.IsCreated ? triangleVertices.Length : 0;
+
+        [BurstCompile(CompileSynchronously = true)]
+        private struct WritePositionsJob : IJobParallelFor
+        {
+            [ReadOnly] public NativeArray<Vector3Int> Triangles;
+            [ReadOnly] public NativeArray<Vector3> Weights;
+            [ReadOnly] public NativeArray<Vector3> Displacements;
+            [ReadOnly] public NativeArray<Vector3> Vertices;
+            [WriteOnly] public NativeArray<Vector3> Destination;
+            public Matrix4x4 ToRoot;
+
+            public void Execute(int g)
+            {
+                Vector3Int triangle = Triangles[g];
+                Vector3 w = Weights[g];
+                Vector3 a = Vertices[triangle.x], b = Vertices[triangle.y], c = Vertices[triangle.z], d = Displacements[g];
+                float x = w.x * a.x + w.y * b.x + w.z * c.x + d.x;
+                float y = w.x * a.y + w.y * b.y + w.z * c.y + d.y;
+                float z = w.x * a.z + w.y * b.z + w.z * c.z + d.z;
+                Destination[g] = new Vector3(
+                    ToRoot.m00 * x + ToRoot.m01 * y + ToRoot.m02 * z + ToRoot.m03,
+                    ToRoot.m10 * x + ToRoot.m11 * y + ToRoot.m12 * z + ToRoot.m13,
+                    ToRoot.m20 * x + ToRoot.m21 * y + ToRoot.m22 * z + ToRoot.m23);
+            }
+        }
 
         public void Initialize(GaussianModel model, BakedMesh bakedMesh, uint[] sourceIndices)
         {
-            if (triangleVertices != null)
+            if (triangleVertices.IsCreated)
                 throw new InvalidOperationException("The stitching updater is already initialized.");
             if (model == null || !model.isStitched)
                 throw new ArgumentException("A stitched Gaussian model is required.", nameof(model));
@@ -40,9 +70,11 @@ namespace Interdigital.Arf
             if (faceIds.Length != count || bary.Length != 3 * count || offsets.Length != 3 * count)
                 throw new ArgumentException("Stitching data does not match the splat count.", nameof(model));
 
-            var indices = new Vector3Int[count];
-            var normalizedWeights = new Vector3[count];
-            var unityOffsets = new Vector3[count];
+            var indices = new NativeArray<Vector3Int>(count, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            var normalizedWeights = new NativeArray<Vector3>(count, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            var unityOffsets = new NativeArray<Vector3>(count, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            try
+            {
             uint vertexCount = checked((uint)source.sharedMesh.vertexCount);
             uint faceCount = checked((uint)(sourceIndices.Length / 3));
             for (int g = 0; g < count; g++)
@@ -72,6 +104,14 @@ namespace Interdigital.Arf
                 // glTF positions and displacements are converted from LUF to Unity RUF.
                 unityOffsets[g] = new Vector3(-offsets[k], offsets[k + 1], offsets[k + 2]);
             }
+            }
+            catch
+            {
+                indices.Dispose();
+                normalizedWeights.Dispose();
+                unityOffsets.Dispose();
+                throw;
+            }
 
             triangleVertices = indices;
             weights = normalizedWeights;
@@ -80,7 +120,7 @@ namespace Interdigital.Arf
 
         public void WritePositions(BakedMesh baked, Vector3[] destination, int offset, Matrix4x4 toRoot)
         {
-            if (triangleVertices == null)
+            if (!triangleVertices.IsCreated)
                 throw new InvalidOperationException("The stitching updater has not been initialized.");
             if (baked == null || !baked.HasSnapshot)
                 throw new InvalidOperationException("The source mesh has not been baked.");
@@ -97,6 +137,32 @@ namespace Interdigital.Arf
                                 w.z * vertices[triangle.z] + displacements[g];
                 destination[offset + g] = toRoot.MultiplyPoint3x4(local);
             }
+        }
+
+        /// <summary>Same computation as <see cref="WritePositions"/>, as a parallel Burst job.</summary>
+        public JobHandle ScheduleWritePositions(NativeArray<Vector3> vertices, NativeArray<Vector3> destination, int offset,
+            Matrix4x4 toRoot, JobHandle dependsOn = default)
+        {
+            if (!triangleVertices.IsCreated)
+                throw new InvalidOperationException("The stitching updater has not been initialized.");
+            if (offset < 0 || destination.Length - offset < Count)
+                throw new ArgumentException("The destination has insufficient space.", nameof(destination));
+            return new WritePositionsJob
+            {
+                Triangles = triangleVertices,
+                Weights = weights,
+                Displacements = displacements,
+                Vertices = vertices,
+                Destination = destination.GetSubArray(offset, Count),
+                ToRoot = toRoot
+            }.Schedule(Count, JobBatchSize, dependsOn);
+        }
+
+        private void OnDestroy()
+        {
+            if (triangleVertices.IsCreated) triangleVertices.Dispose();
+            if (weights.IsCreated) weights.Dispose();
+            if (displacements.IsCreated) displacements.Dispose();
         }
 
         private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);

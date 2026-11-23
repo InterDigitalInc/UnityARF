@@ -6,6 +6,9 @@
 using System;
 using System.Collections.Generic;
 using Gsplat;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.LowLevel;
@@ -27,14 +30,56 @@ namespace Interdigital.Arf
             public BakedMesh Baked;
             public GaussianStitchingUpdater Stitching;
             public Vector3[] SourcePositions;
+            public NativeArray<Vector3> Vertices;
             public int Offset;
             public int Count;
+        }
+
+        [BurstCompile(CompileSynchronously = true)]
+        private struct PositionBoundsJob : IJob
+        {
+            [ReadOnly] public NativeArray<Vector3> Positions;
+            [WriteOnly] public NativeArray<Vector3> MinMax;
+
+            public void Execute()
+            {
+                float minX = float.PositiveInfinity, minY = float.PositiveInfinity, minZ = float.PositiveInfinity;
+                float maxX = float.NegativeInfinity, maxY = float.NegativeInfinity, maxZ = float.NegativeInfinity;
+                for (int g = 0; g < Positions.Length; g++)
+                {
+                    Vector3 p = Positions[g];
+                    if (p.x < minX) minX = p.x;
+                    if (p.y < minY) minY = p.y;
+                    if (p.z < minZ) minZ = p.z;
+                    if (p.x > maxX) maxX = p.x;
+                    if (p.y > maxY) maxY = p.y;
+                    if (p.z > maxZ) maxZ = p.z;
+                }
+                MinMax[0] = new Vector3(minX, minY, minZ);
+                MinMax[1] = new Vector3(maxX, maxY, maxZ);
+            }
+        }
+
+        [BurstCompile(CompileSynchronously = true)]
+        private struct GpuPositionsJob : IJobParallelFor
+        {
+            [ReadOnly] public NativeArray<Vector3> Positions;
+            [WriteOnly] public NativeArray<Vector4> GpuPositions;
+
+            public void Execute(int g)
+            {
+                Vector3 p = Positions[g];
+                GpuPositions[g] = new Vector4(p.x, p.y, p.z, 0f);
+            }
         }
 
         private Part[] parts;
         private GsplatAssetUncompressed asset;
         private GsplatRenderer splats;
-        private Vector4[] gpuPositions;
+        private NativeArray<Vector3> positions;
+        private NativeArray<Vector4> gpuPositions;
+        private NativeArray<Vector3> positionMinMax;
+        private float maxSplatExtent;
         private Texture2D stagingTexture;
         private Vector4[] stagingPixels;
         private bool warnedTextureUpload;
@@ -112,7 +157,15 @@ namespace Interdigital.Arf
             asset = ScriptableObject.CreateInstance<GsplatAssetUncompressed>();
             asset.name = $"{name} (merged Gaussians)";
             asset.LoadFromDecoded(combined);
-            gpuPositions = new Vector4[total];
+            positions = new NativeArray<Vector3>(combined.Positions, Allocator.Persistent);
+            gpuPositions = new NativeArray<Vector4>(total, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+            positionMinMax = new NativeArray<Vector3>(2, Allocator.Persistent);
+            foreach (Vector3 scale in combined.Scales)
+                maxSplatExtent = Mathf.Max(maxSplatExtent, 3f * Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z)));
+            foreach (Part part in parts)
+                if (part.Stitching != null)
+                    part.Vertices = new NativeArray<Vector3>(part.Baked.GetComponent<SkinnedMeshRenderer>().sharedMesh.vertexCount,
+                        Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
             splats = gameObject.AddComponent<GsplatRenderer>();
             splats.GsplatAsset = asset;
@@ -133,12 +186,14 @@ namespace Interdigital.Arf
                 return;
             MergedGaussianSortHook.EnsureInstalled();
 
+            JobHandle stitching = default;
             foreach (Part part in parts)
             {
                 if (part.Model == null)
                     continue;
                 if (!HasTranslationOnly(part.Model.transform))
                 {
+                    stitching.Complete();
                     Debug.LogError($"Gaussian model {part.Model.name} acquired a rotation or scale relative to its merged renderer.", this);
                     enabled = false;
                     return;
@@ -146,29 +201,36 @@ namespace Interdigital.Arf
                 Matrix4x4 toRoot = transform.worldToLocalMatrix * part.Model.transform.localToWorldMatrix;
                 if (part.Stitching != null)
                 {
-                    part.Baked.Bake();
+                    part.Baked.Bake(readVertices: false);
                     if (!part.Baked.HasSnapshot)
                         continue;
-                    part.Stitching.WritePositions(part.Baked, asset.Positions, part.Offset, toRoot);
+                    part.Baked.CopyVertices(part.Vertices);
+                    stitching = part.Stitching.ScheduleWritePositions(part.Vertices, positions, part.Offset, toRoot, stitching);
                 }
                 else
                 {
+                    stitching.Complete();
                     for (int g = 0; g < part.Count; g++)
-                        asset.Positions[part.Offset + g] = toRoot.MultiplyPoint3x4(part.SourcePositions[g]);
+                        positions[part.Offset + g] = toRoot.MultiplyPoint3x4(part.SourcePositions[g]);
                 }
             }
 
-            Bounds bounds = CalculateBounds(asset.Positions, asset.Scales);
+            JobHandle boundsJob = new PositionBoundsJob { Positions = positions, MinMax = positionMinMax }.Schedule(stitching);
+            JobHandle gpuJob = new GpuPositionsJob { Positions = positions, GpuPositions = gpuPositions }
+                .Schedule(positions.Length, 4096, stitching);
+            JobHandle.CombineDependencies(boundsJob, gpuJob).Complete();
+            positions.CopyTo(asset.Positions);
+
+            // Conservative: the largest splat's extent around all positions.
+            Vector3 extent = Vector3.one * maxSplatExtent;
+            Vector3 minimum = positionMinMax[0] - extent;
+            Vector3 maximum = positionMinMax[1] + extent;
+            var bounds = new Bounds((minimum + maximum) * 0.5f, maximum - minimum);
             asset.Bounds = bounds;
             var resource = splats.GsplatResource as GsplatResourceUncompressed;
             if (resource == null || resource.Disposed || resource.UploadedCount < asset.SplatCount)
                 return;
 
-            for (int g = 0; g < gpuPositions.Length; g++)
-            {
-                Vector3 position = asset.Positions[g];
-                gpuPositions[g] = new Vector4(position.x, position.y, position.z, 0f);
-            }
             if (resource.PositionBuffer != null)
                 resource.PositionBuffer.SetData(gpuPositions);
             else if (resource.PositionTexture != null)
@@ -321,7 +383,7 @@ namespace Interdigital.Arf
                     destination.graphicsFormat, TextureCreationFlags.None);
                 stagingPixels = new Vector4[checked(destination.width * destination.height)];
             }
-            Array.Copy(gpuPositions, stagingPixels, gpuPositions.Length);
+            NativeArray<Vector4>.Copy(gpuPositions, stagingPixels, gpuPositions.Length);
             stagingTexture.SetPixelData(stagingPixels, 0);
             stagingTexture.Apply(false, false);
             Graphics.CopyTexture(stagingTexture, destination);
@@ -344,6 +406,12 @@ namespace Interdigital.Arf
         {
             MergedGaussianSortHook.Unregister(this);
             ReleaseStagingTexture();
+            if (positions.IsCreated) positions.Dispose();
+            if (gpuPositions.IsCreated) gpuPositions.Dispose();
+            if (positionMinMax.IsCreated) positionMinMax.Dispose();
+            if (parts != null)
+                foreach (Part part in parts)
+                    if (part.Vertices.IsCreated) part.Vertices.Dispose();
             if (asset == null)
                 return;
             if (splats != null)

@@ -3,7 +3,8 @@
   "rootNamespace": "UnityArf.UnitySplats",
   "references": [
     "UnityARF",
-    "Gsplat"
+    "Gsplat",
+    "Unity.Burst"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
