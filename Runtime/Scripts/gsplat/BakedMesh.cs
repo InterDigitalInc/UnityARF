@@ -5,6 +5,7 @@
 //
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 
 namespace Interdigital.Arf
@@ -37,7 +38,9 @@ namespace Interdigital.Arf
                 Bake();
         }
 
-        public void Bake()
+        /// <param name="readVertices">False if the caller uses <see cref="CopyVertices"/> instead of
+        /// <see cref="Vertices"/>, which avoids a managed copy of the vertices.</param>
+        public void Bake(bool readVertices = true)
         {
             if (source == null || source.sharedMesh == null)
             {
@@ -47,9 +50,16 @@ namespace Interdigital.Arf
 
             // Positions stay in mesh-local space; the merged renderer applies the avatar transform.
             source.BakeMesh(snapshot, false);
-            snapshot.GetVertices(vertices);
+            if (readVertices || Baked != null)
+                snapshot.GetVertices(vertices);
             HasSnapshot = true;
             Baked?.Invoke(this);
+        }
+
+        public void CopyVertices(NativeArray<Vector3> destination)
+        {
+            using UnityEngine.Mesh.MeshDataArray data = UnityEngine.Mesh.AcquireReadOnlyMeshData(snapshot);
+            data[0].GetVertices(destination);
         }
 
         private void OnDestroy()
